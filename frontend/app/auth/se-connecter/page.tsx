@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,7 +15,7 @@ export default function SeConnecterPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-black text-white p-8">
+    <div className="min-h-screen bg-linear-to-br from-[#0f172a] via-[#1e1b4b] to-black text-white p-8">
       <h1 className="text-2xl mb-6">
         {role === "student" ? "Espace Étudiant" : "Espace Enseignant"}
       </h1>

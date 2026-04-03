@@ -15,7 +15,7 @@ export default function StartPage() {
       <div className="flex gap-4">
         <button
           onClick={() => router.push("/auth/login")}
-          className="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-xl hover:opacity-90 transition"
+          className="px-6 py-3 bg-linear-to-r from-cyan-400 to-purple-500 rounded-xl hover:opacity-90 transition"
         >
           Se connecter
         </button>
