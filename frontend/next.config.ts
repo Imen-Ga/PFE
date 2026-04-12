@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      {
+        source: "/auth/se-connecter",
+        destination: "/auth/student-teacher/login",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

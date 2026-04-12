@@ -119,6 +119,13 @@ export default function LoginPage() {
             Pas encore de compte ?
             <span className="text-cyan-400 cursor-pointer"> Créer un compte</span>
           </p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="w-full mt-4 py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
+          >
+            Retour a l'accueil
+          </button>
 
         </div>
       </div>

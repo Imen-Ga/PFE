@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
+import Link from "next/link";
 export default function ForgetPass() {
   const [email, setEmail] = useState("");
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function ForgetPass() {
 
       {/* LEFT */}
       <div className="w-1/2 p-10 flex flex-col justify-center">
-        <h2 className="text-cyan-400 text-xl mb-6">FaceCheck</h2>
+        <h2 className="text-cyan-400 text-xl mb-6">PrésenceFacile</h2>
 
         <h1 className="text-5xl font-bold leading-tight">
           Mot de passe <br />
@@ -50,7 +50,7 @@ export default function ForgetPass() {
         <div className="bg-[#111827] p-8 rounded-2xl w-[400px] shadow-2xl border border-gray-800">
 
           <h2 className="text-center text-2xl font-semibold mb-2">
-            Reset Password
+            réinitialiser le mot de passe
           </h2>
 
           <p className="text-center text-gray-400 mb-6">
@@ -74,13 +74,19 @@ export default function ForgetPass() {
           </button>
 
           {/* BACK */}
-          <p
-            onClick={() => router.push("/auth/login")}
-            className="text-center text-cyan-400 cursor-pointer"
+          <Link
+            href="/auth/student-teacher/login"
+            className="block w-full text-center py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition mb-2"
           >
-            Retour à la connexion
-          </p>
-
+            Retour a la connexion 
+          </Link>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="w-full mt-4 py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
+          >
+            Retour a l&apos;accueil
+          </button>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function SeConnecterPage() {
   const [role, setRole] = useState<"student" | "teacher">("student");
@@ -44,6 +45,13 @@ export default function SeConnecterPage() {
           </div>
         </div>
       )}
+
+      <Link
+        href="/"
+        className="inline-block mt-8 px-5 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
+      >
+        Retour a l'accueil
+      </Link>
     </div>
   );
 }
