@@ -121,10 +121,17 @@ export default function UsersTablePage() {
             setIsDeletingById((prev) => ({ ...prev, [user.id]: true }));
 
             await deleteDoc(doc(db, "users", user.id));
-            await deleteUserAuth(user.id);
+
+            await fetch("/api/users/delete-auth", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ userId: user.id }),
+            });
 
             setUsers((prevUsers) => prevUsers.filter((item) => item.id !== user.id));
-            setMessage({ type: "success", text: "Utilisateur supprime" });
+            setMessage({ type: "success", text: "Utilisateur supprimé" });
         } catch (error) {
             console.error(error);
             setMessage({ type: "error", text: "Erreur lors de la suppression de l'utilisateur" });
