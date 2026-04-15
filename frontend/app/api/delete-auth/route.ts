@@ -6,7 +6,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { userId } = body;
-
+    console.log("userId ",userId);
+    
     if (!userId) {
       return NextResponse.json(
         { error: "userId manquant" },
