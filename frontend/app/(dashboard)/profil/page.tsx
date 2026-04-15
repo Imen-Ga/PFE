@@ -38,7 +38,7 @@ export default function ProfilePage() {
       </button>
       <div className="mt-4">
         <Link href="/" className="text-cyan-400">
-          Retour a l'accueil
+          Retour a accueil
         </Link>
       </div>
     </div>

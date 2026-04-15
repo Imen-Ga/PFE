@@ -1,7 +1,8 @@
 "use client";
 
 import { db } from "@/filebase";
-import { collection, doc, getDocs, setDoc } from "firebase/firestore";
+import { deleteUserAuth } from "@/functions";
+import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -15,10 +16,27 @@ type UserRow = {
     password: string;
 };
 
+type PageMessage = {
+    type: "success" | "error";
+    text: string;
+};
+
 export default function UsersTablePage() {
     const [users, setUsers] = useState<UserRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingById, setIsSavingById] = useState<Record<string, boolean>>({});
+    const [isDeletingById, setIsDeletingById] = useState<Record<string, boolean>>({});
+    const [message, setMessage] = useState<PageMessage | null>(null);
+
+    useEffect(() => {
+        if (!message) return;
+
+        const timeoutId = window.setTimeout(() => {
+            setMessage(null);
+        }, 3500);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [message]);
 
     useEffect(() => {
         const loadUsers = async () => {
@@ -48,7 +66,7 @@ export default function UsersTablePage() {
                 setUsers(usersData);
             } catch (error) {
                 console.error(error);
-                alert("Erreur lors du chargement des utilisateurs");
+                setMessage({ type: "error", text: "Erreur lors du chargement des utilisateurs" });
             } finally {
                 setIsLoading(false);
             }
@@ -77,22 +95,41 @@ export default function UsersTablePage() {
             await setDoc(
                 doc(db, "users", user.id),
                 {
-                    email: user.email,
                     username: user.username,
                     role: user.role,
                     phoneNbr: user.phoneNbr,
                     birthDate: user.birthDate,
-                    password: user.password,
+                    
                 },
                 { merge: true },
             );
 
-            alert("Informations utilisateur mises a jour");
+            setMessage({ type: "success", text: "Informations utilisateur mises a jour" });
         } catch (error) {
             console.error(error);
-            alert("Erreur lors de la mise a jour de l'utilisateur");
+            setMessage({ type: "error", text: "Erreur lors de la mise a jour de l'utilisateur" });
         } finally {
             setIsSavingById((prev) => ({ ...prev, [user.id]: false }));
+        }
+    };
+
+    const handleDeleteUser = async (user: UserRow) => {
+        const isConfirmed = window.confirm(`Supprimer l'utilisateur ${user.username} ?`);
+        if (!isConfirmed) return;
+
+        try {
+            setIsDeletingById((prev) => ({ ...prev, [user.id]: true }));
+
+            await deleteDoc(doc(db, "users", user.id));
+            await deleteUserAuth(user.id);
+
+            setUsers((prevUsers) => prevUsers.filter((item) => item.id !== user.id));
+            setMessage({ type: "success", text: "Utilisateur supprime" });
+        } catch (error) {
+            console.error(error);
+            setMessage({ type: "error", text: "Erreur lors de la suppression de l'utilisateur" });
+        } finally {
+            setIsDeletingById((prev) => ({ ...prev, [user.id]: false }));
         }
     };
 
@@ -116,6 +153,18 @@ export default function UsersTablePage() {
                         </Link>
                     </div>
                 </div>
+
+                {message && (
+                    <div
+                        className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                            message.type === "success"
+                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                : "border-red-500/40 bg-red-500/10 text-red-300"
+                        }`}
+                    >
+                        {message.text}
+                    </div>
+                )}
 
                 {isLoading ? (
                     <p className="text-gray-300">Chargement...</p>
@@ -181,6 +230,7 @@ export default function UsersTablePage() {
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
+                                            <div className="flex items-center gap-2">
                                             <button
                                                 type="button"
                                                 onClick={() => handleSaveUser(user)}
@@ -189,6 +239,15 @@ export default function UsersTablePage() {
                                             >
                                                 {isSavingById[user.id] ? "Enregistrement..." : "Enregistrer"}
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteUser(user)}
+                                                disabled={!!isDeletingById[user.id]}
+                                                className="px-4 py-2 rounded-lg border border-red-400 text-red-300 hover:bg-red-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                            >
+                                                {isDeletingById[user.id] ? "Suppression..." : "Supprimer"}
+                                            </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

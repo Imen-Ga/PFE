@@ -166,15 +166,6 @@ async function login(e: any) {
             {isLoading ? "Connexion en cours" : "Se connecter"}
           </button>
           </form>
-          <p className="text-center text-gray-400 mt-4 text-sm">
-            Pas encore de compte ?
-            <span
-              onClick={() => router.push(`/auth/${String(param.role || "student-teacher")}/register`)}
-              className="text-cyan-400 cursor-pointer"
-            >
-              {" "}Créer un compte
-            </span>
-          </p>
           <button
             type="button"
             onClick={() => router.push("/")}
