@@ -122,7 +122,7 @@ export default function UsersTablePage() {
 
             await deleteDoc(doc(db, "users", user.id));
 
-            await fetch("/api/users/delete-auth", {
+            await fetch("/api/delete-auth", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
