@@ -11,8 +11,9 @@ export default function LoginPage() {
   const router = useRouter();
   const param = useParams();
   console.log("ROLE PARAM:", param.role); // 🔍 DEBUG: vérifier le rôle reçu
+  const isStudentTeacherPage = param.role == "etudiant-enseignant";
   const dispatch = useDispatch();
-  const [role, setRole] = useState<"student" | "teacher">("student");
+  const [role, setRole] = useState<"etudiant" | "enseignant">("etudiant");
   const [isLoading, setIsLoading] = useState(false);
 async function login(e: any) {
   e.preventDefault();
@@ -34,22 +35,39 @@ async function login(e: any) {
 
     // 📥 récupérer données Firestore
     const docRef = doc(db, "users", uid);
-    await getDoc(docRef);
-    const selectedRoleLabel = role === "teacher" ? "Teacher" : "Student";
+    const userDoc = await getDoc(docRef);
+    const firestoreRole = String(userDoc.data()?.role || "").trim().toLowerCase();
+
+    const isStudentRole = [ "etudiant"].includes(firestoreRole);
+    const isTeacherRole = [ "enseignant"].includes(firestoreRole);
+
+    if (isStudentTeacherPage) {
+      if (role === "etudiant" && !isStudentRole) {
+        alert("Ce compte n'est pas un compte Etudiant.");
+        return;
+      }
+
+      if (role === "enseignant" && !isTeacherRole) {
+        alert("Ce compte n'est pas un compte Enseignant.");
+        return;
+      }
+    }
+
+    const selectedRoleLabel = role === "enseignant" ? "enseignant" : "etudiant";
     const resolvedRole = param.role == "admin" ? "admin" : selectedRoleLabel;
 
     // 🧠 stocker dans Redux
     dispatch(addCurrentUserInfo({
       uid: uid,
       email: userCredential.user.email,
-      role: resolvedRole || "student",
+      role: resolvedRole || "etudiant",
     }));
 
     // 🚀 REDIRECTION DYNAMIQUE
-    if (param.role == "student-teacher") {
-      router.push(role === "teacher" ? "/teacher" : "/student");
+    if (isStudentTeacherPage) {
+      router.push(role === "enseignant" ? "/teacher" : "/student");
     } else {
-      router.push("/admin");
+      router.push("/admin/users");
     }
 
 
@@ -96,14 +114,14 @@ async function login(e: any) {
           </p>
 
           {/* Boutons Étudiant / Enseignant */}
-          { param.role == "student-teacher"&&(  
+          { isStudentTeacherPage &&(
           <div className="flex gap-2 mb-4">
 
             
             <button
-              onClick={() => setRole("student")}
+              onClick={() => setRole("etudiant")}
               className={`flex-1 py-2 rounded-lg ${
-                role === "student"
+                role === "etudiant"
                   ? "bg-linear-to-r from-cyan-500 to-purple-500"
                   : "bg-gray-700"
                 }`}
@@ -112,9 +130,9 @@ async function login(e: any) {
             </button>
 
             <button
-              onClick={() => setRole("teacher")}
+              onClick={() => setRole("enseignant")}
               className={`flex-1 py-2 rounded-lg ${
-                role === "teacher"
+                role === "enseignant"
                   ? "bg-linear-to-r from-cyan-500 to-purple-500"
                   : "bg-gray-700"
                 }`}

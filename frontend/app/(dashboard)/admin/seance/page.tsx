@@ -1,6 +1,5 @@
 "use client";
 
-import AddUserComponent from "@/compoenents/AddUserForm";
 import { db } from "@/filebase";
 import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
@@ -30,7 +29,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     return fallback;
 };
 
-export default function UsersTablePage() {
+export default function SeanceTable() {
     const [users, setUsers] = useState<UserRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingById, setIsSavingById] = useState<Record<string, boolean>>({});
@@ -171,20 +170,13 @@ export default function UsersTablePage() {
         <div className="min-h-screen p-6 md:p-10 text-white bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
             <div className="max-w-6xl mx-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
                 <div className="flex items-center justify-between gap-4 mb-6">
-                    <h1 className="text-2xl md:text-3xl font-bold">Tableau des utilisateurs</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold">Liste des séances</h1>
                     <div className="flex items-center gap-3">
                         <Link
                             href="/admin/ajouter-seance"
                             className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
                         >
-                            Ajouter seance
-                        </Link>
-
-                        <Link
-                            href="/admin"
-                            className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
-                        >
-                            Ajouter utilisateur
+                            Ajouter séance
                         </Link>
                         <Link
                             href="/"
@@ -216,12 +208,12 @@ export default function UsersTablePage() {
                         <table className="w-full text-sm text-left border-collapse">
                             <thead>
                                 <tr className="text-cyan-300 border-b border-gray-700">
-                                    <th className="py-3 pr-4">Nom</th>
-                                    <th className="py-3 pr-4">Email</th>
-                                    <th className="py-3 pr-4">Role</th>
-                                    <th className="py-3 pr-4">Telephone</th>
-                                    <th className="py-3 pr-4">Date naissance</th>
-                                    <th className="py-3 pr-4">Mot de passe</th>
+                                    <th className="py-3 pr-4">Nom de la séance</th>
+                                    <th className="py-3 pr-4">date</th>
+                                    <th className="py-3 pr-4">heure de début</th>
+                                    <th className="py-3 pr-4">heure de fin</th>
+                                    <th className="py-3 pr-4">Responsable</th>
+                                    <th className="py-3 pr-4">les participants</th>
                                     <th className="py-3 pr-4">Action</th>
                                 </tr>
                             </thead>
@@ -296,7 +288,6 @@ export default function UsersTablePage() {
                         </table>
                     </div>
                 )}
-                {/* <AddUserComponent /> */}
             </div>
         </div>
     );

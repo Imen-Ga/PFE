@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { adminAuth } from "@/firebase-admin.init";
+import { getAdminAuth, getAdminDb } from "@/firebase-admin.init";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+
     const body = await req.json();
     const { userId } = body;
-    console.log("userId ",userId);
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: "userId manquant" },
@@ -16,10 +18,11 @@ export async function POST(req: Request) {
     }
 
     await adminAuth.deleteUser(userId);
+    await adminDb.collection("users").doc(userId).delete();
 
     return NextResponse.json({
       success: true,
-      message: "Utilisateur supprimé de Firebase Auth",
+      message: "Utilisateur supprimé de Firebase Auth et Firestore",
     });
   } catch (error: any) {
     console.error(error);

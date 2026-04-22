@@ -75,7 +75,7 @@ export default function ForgetPass() {
 
           {/* BACK */}
           <Link
-            href="/auth/student-teacher/login"
+            href="/auth/etudiant-enseignant/login"
             className="block w-full text-center py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition mb-2"
           >
             Retour a la connexion 

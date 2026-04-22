@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useState } from "react";
-export default function Dashboard() {
+export default function AddUserComponent() {
     const [role, setRole] = useState("Etudiant");
     const addUser = async ({
         email,

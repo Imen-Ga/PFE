@@ -29,7 +29,7 @@ export default function StartPage() {
            Administrateur
         </button>
         <button
-          onClick={() => router.push("/auth/student-teacher/login")}
+          onClick={() => router.push("/auth/etudiant-enseignant/login")}
           className="px-6 py-3 my-4 bg-linear-to-r from-cyan-400 to-purple-500 rounded-xl hover:opacity-90 transition"
         >
           Etudiant/Enseignant
