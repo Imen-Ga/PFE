@@ -1,6 +1,5 @@
 "use client";
 
-import AddUserComponent from "@/compoenents/AddUserForm";
 import { db } from "@/filebase";
 import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
@@ -174,20 +173,13 @@ export default function UsersTablePage() {
                     <h1 className="text-2xl md:text-3xl font-bold">Tableau des utilisateurs</h1>
                     <div className="flex items-center gap-3">
                         <Link
-                            href="/admin/ajouter-seance"
-                            className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
-                        >
-                            Ajouter seance
-                        </Link>
-
-                        <Link
-                            href="/admin"
+                            href="/admin/ajouter-utilisateur"
                             className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
                         >
                             Ajouter utilisateur
                         </Link>
                         <Link
-                            href="/"
+                            href="/admin"
                             className="px-4 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
                         >
                             Retour accueil

@@ -23,16 +23,10 @@ export default function StartPage() {
 
       <div className="flex flex-col">
         <button
-          onClick={() => router.push("/auth/admin/login")}
+          onClick={() => router.push("/auth/login")}
           className="px-6 py-3 my-4 bg-linear-to-r from-cyan-400 to-purple-500 rounded-xl hover:opacity-90 transition"
         >
-           Administrateur
-        </button>
-        <button
-          onClick={() => router.push("/auth/etudiant-enseignant/login")}
-          className="px-6 py-3 my-4 bg-linear-to-r from-cyan-400 to-purple-500 rounded-xl hover:opacity-90 transition"
-        >
-          Etudiant/Enseignant
+           Se connecter
         </button>
 
       </div>

@@ -3,77 +3,67 @@
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/filebase";
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { signin } from "@/redux/action/login";
-import { addCurrentUserInfo } from "@/redux/slice/authSlice";
+import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
+import { addCurrentUserInfo } from "@/redux/slice/authSlice";
+import { signin } from "@/redux/action/login";
 export default function LoginPage() {
   const router = useRouter();
-  const param = useParams();
-  console.log("ROLE PARAM:", param.role); // 🔍 DEBUG: vérifier le rôle reçu
-  const isStudentTeacherPage = param.role == "etudiant-enseignant";
   const dispatch = useDispatch();
-  const [role, setRole] = useState<"etudiant" | "enseignant">("etudiant");
   const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 async function login(e: any) {
   e.preventDefault();
-
   const email = e.target.email.value;
   const password = e.target.password.value;
-
+  setFeedback(null);
   if (!email || !password) {
-    alert("Veuillez remplir tous les champs");
+    setFeedback({ type: "error", text: "Veuillez remplir tous les champs" });
     return;
   }
-
   try {
     setIsLoading(true);
-    // 🔐 login Firebase
     const userCredential = await signin({ email, password });
+    if(userCredential.accessToken){
+        const uid = userCredential.user.uid;
+        const docRef = doc(db, "users", uid);
+        const userDoc = await getDoc(docRef);
+        if (userDoc.exists()) {
+            if(userDoc.data()){
 
-    const uid = userCredential.user.uid;
-
-    // 📥 récupérer données Firestore
-    const docRef = doc(db, "users", uid);
-    const userDoc = await getDoc(docRef);
-    const firestoreRole = String(userDoc.data()?.role || "").trim().toLowerCase();
-
-    const isStudentRole = [ "etudiant"].includes(firestoreRole);
-    const isTeacherRole = [ "enseignant"].includes(firestoreRole);
-
-    if (isStudentTeacherPage) {
-      if (role === "etudiant" && !isStudentRole) {
-        alert("Ce compte n'est pas un compte Etudiant.");
-        return;
-      }
-
-      if (role === "enseignant" && !isTeacherRole) {
-        alert("Ce compte n'est pas un compte Enseignant.");
-        return;
-      }
-    }
-
-    const selectedRoleLabel = role === "enseignant" ? "enseignant" : "etudiant";
-    const resolvedRole = param.role == "admin" ? "admin" : selectedRoleLabel;
-
-    // 🧠 stocker dans Redux
-    dispatch(addCurrentUserInfo({
-      uid: uid,
-      email: userCredential.user.email,
-      role: resolvedRole || "etudiant",
-    }));
-
-    // 🚀 REDIRECTION DYNAMIQUE
-    if (isStudentTeacherPage) {
-      router.push(role === "enseignant" ? "/teacher" : "/student");
+                const userData = userDoc.data();
+                dispatch(addCurrentUserInfo({
+                  password: password,
+                  email: userCredential.user.email,
+                  ...userData,
+                  createdAt: userData.createdAt?.toDate
+                    ? userData.createdAt.toDate().toISOString()
+                    : (typeof userData.createdAt === "string" ? userData.createdAt : null),
+                }));
+                localStorage.setItem("uid", uid);
+                localStorage.setItem("accessToken", userCredential.accessToken );
+                if(userDoc.data().role === "Admin"){
+                    router.push("/admin");
+                }else if(userDoc.data().role === "Enseignant"){
+                    router.push("/teacher");
+                }else if(userDoc.data().role === "Etudiant"){
+                    router.push("/student");
+                }
+                else{
+                    setFeedback({
+                      type: "error",
+                      text: "Acces refuse: seuls les comptes administrateur peuvent se connecter ici. Role detecte: " + userDoc.data().role,
+                    });
+                }
+            } 
+        }            
     } else {
-      router.push("/admin/users");
-    }
-
+        setFeedback({ type: "error", text: "Erreur de connexion: token d'accès manquant." });
+}
 
   } catch (error) {
     console.error(error);
-    alert("Erreur de connexion");
+    setFeedback({ type: "error", text: "Erreur de connexion" });
   } finally {
     setIsLoading(false);
   }
@@ -112,37 +102,17 @@ async function login(e: any) {
           <p className="text-center text-gray-400 mb-6">
             Accédez à votre espace sécurisé
           </p>
-
-          {/* Boutons Étudiant / Enseignant */}
-          { isStudentTeacherPage &&(
-          <div className="flex gap-2 mb-4">
-
-            
-            <button
-              onClick={() => setRole("etudiant")}
-              className={`flex-1 py-2 rounded-lg ${
-                role === "etudiant"
-                  ? "bg-linear-to-r from-cyan-500 to-purple-500"
-                  : "bg-gray-700"
-                }`}
-                >
-              Étudiant
-            </button>
-
-            <button
-              onClick={() => setRole("enseignant")}
-              className={`flex-1 py-2 rounded-lg ${
-                role === "enseignant"
-                  ? "bg-linear-to-r from-cyan-500 to-purple-500"
-                  : "bg-gray-700"
-                }`}
-                >
-              Enseignant
-            </button>
-          </div>
-            )
-}
-
+          {feedback && (
+            <p
+              className={`mb-4 rounded-lg border px-3 py-2 text-sm ${
+                feedback.type === "error"
+                  ? "border-red-400/40 bg-red-500/10 text-red-200"
+                  : "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+              }`}
+            >
+              {feedback.text}
+            </p>
+          )}
           {/* Inputs */}
           <form onSubmit={login}>
           <input

@@ -3,10 +3,14 @@ import { auth, db } from "@/filebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-export default function AddUserComponent() {
+
+export default function AddUserPage() {
     const [role, setRole] = useState("Etudiant");
     const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const router = useRouter();
+
     const addUser = async ({
         email,
         password,
@@ -27,12 +31,14 @@ export default function AddUserComponent() {
             const user = userCredential.user;
 
             await setDoc(doc(db, "users", user.uid), {
+                email,
+                password,
                 username,
                 birthDate: birthdate,
                 role: userrole,
                 phoneNbr,
                 createdAt: new Date(),
-                ...(userrole === "Enseignant" ? { studentIds: [] } : {}),//liste des etudiants seulement pour les enseignants
+                ...(userrole === "Enseignant" ? { studentIds: [] } : {}),
             });
 
             return { success: true };
@@ -71,20 +77,24 @@ export default function AddUserComponent() {
     };
 
     return (
-        <div
-            className="min-h-screen text-white flex items-center justify-center p-4 md:p-8"
-            style={{
-                backgroundImage:
-                    "linear-gradient(rgba(11, 15, 26, 0.8), rgba(2, 6, 23, 0.8)), url('/gifs/presence.gif')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-            }}
-        >
-            <div className="w-full max-w-md">
-                <div className="bg-[#111827] p-6 md:p-8 rounded-2xl w-full shadow-2xl border border-gray-800 flex flex-col">
-                    <h2 className="text-center text-2xl font-semibold mb-2">Ajouter un utilisateur</h2>
-                    <p className="text-center text-gray-400 mb-6">Remplissez les informations du nouveau compte</p>
+        <div className="relative min-h-screen overflow-hidden text-white bg-[#020617]">
+            <iframe
+                src="/admin/users"
+                title="Tableau des utilisateurs"
+                className="absolute inset-0 h-full w-full pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-[#020617]/60 backdrop-blur-[2px]" />
+
+            <div
+                className="relative z-10 min-h-screen flex justify-end"
+                onClick={() => router.push("/admin/users")}
+            >
+                <aside
+                    className="w-full md:max-w-xl min-h-screen bg-[#111827]/95 border-l border-gray-700 shadow-2xl p-6 md:p-8 overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <h2 className="text-2xl font-semibold mb-2">Ajouter un utilisateur</h2>
+                    <p className="text-gray-400 mb-6">Remplissez les informations du nouveau compte</p>
 
                     {feedback && (
                         <p
@@ -108,7 +118,7 @@ export default function AddUserComponent() {
                         <input
                             type="password"
                             name="password"
-                            placeholder="••••••••"
+                            placeholder="********"
                             className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                         />
                         <select
@@ -139,7 +149,7 @@ export default function AddUserComponent() {
                         <input
                             type="tel"
                             name="phoneNbr"
-                            placeholder="Numéro de téléphone"
+                            placeholder="Numero de telephone"
                             className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                         />
 
@@ -159,10 +169,10 @@ export default function AddUserComponent() {
                             href="/admin"
                             className="block w-full mt-3 py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition text-center"
                         >
-                            Retour accueil
+                            Fermer
                         </Link>
                     </form>
-                </div>
+                </aside>
             </div>
         </div>
     );

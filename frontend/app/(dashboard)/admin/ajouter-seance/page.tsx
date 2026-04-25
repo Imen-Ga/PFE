@@ -2,6 +2,7 @@
 import { db } from "@/filebase";
 import { addDoc, collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type UserOption = {
@@ -14,6 +15,13 @@ export default function Dashboard() {
     const [users, setUsers] = useState<UserOption[]>([]);
     const [responsable, setResponsable] = useState("");
     const [participants, setParticipants] = useState("");
+    const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const router = useRouter();
+
+    const todayLocal = new Date();
+    const minDate = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth() + 1).padStart(2, "0")}-${String(
+        todayLocal.getDate(),
+    ).padStart(2, "0")}`;
 
     useEffect(() => {
         const loadUsers = async () => {
@@ -80,6 +88,7 @@ export default function Dashboard() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const form = e.currentTarget;
+        setFeedback(null);
 
         const name = (form.elements.namedItem("nomseance") as HTMLInputElement)?.value;
         const date = (form.elements.namedItem("date") as HTMLInputElement)?.value;
@@ -89,7 +98,25 @@ export default function Dashboard() {
         const participantsValues = participants;
 
         if (!name || !date || !heurededebut || !heuredefin || !responsable || !participantsValues) {
-            alert("Veuillez remplir tous les champs");
+            setFeedback({ type: "error", text: "Veuillez remplir tous les champs" });
+            return;
+        }
+
+        const selectedDate = new Date(`${date}T00:00:00`);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate < today) {
+            setFeedback({ type: "error", text: "La date de la seance ne peut pas etre dans le passe." });
+            return;
+        }
+
+        const [startHour, startMinute] = heurededebut.split(":").map(Number);
+        const [endHour, endMinute] = heuredefin.split(":").map(Number);
+        const startInMinutes = startHour * 60 + startMinute;
+        const endInMinutes = endHour * 60 + endMinute;
+
+        if (endInMinutes < startInMinutes) {
+            setFeedback({ type: "error", text: "L'heure de fin doit etre superieure ou egale a l'heure de debut." });
             return;
         }
 
@@ -103,31 +130,47 @@ export default function Dashboard() {
         });
 
         if (result.success) {
-            alert("Séance ajoutée avec succès");
+            setFeedback({ type: "success", text: "Seance ajoutee avec succes" });
             form.reset();
             setResponsable("");
             setParticipants("");
             return;
         }
 
-        alert(result.error || "Erreur lors de l'ajout de l'utilisateur");
+        setFeedback({ type: "error", text: result.error || "Erreur lors de l'ajout de l'utilisateur" });
     };
 
     return (
-        <div
-            className="min-h-screen text-white flex items-center justify-center p-4 md:p-8"
-            style={{
-                backgroundImage:
-                    "linear-gradient(rgba(11, 15, 26, 0.8), rgba(2, 6, 23, 0.8)), url('/gifs/presence.gif')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-            }}
-        >
-            <div className="w-full max-w-md">
-                <div className="bg-[#111827] p-6 md:p-8 rounded-2xl w-full shadow-2xl border border-gray-800 flex flex-col">
-                    <h2 className="text-center text-2xl font-semibold mb-2">Ajouter une seance</h2>
-                    <p className="text-center text-gray-400 mb-6">Remplissez les informations de la seance</p>
+        <div className="relative min-h-screen overflow-hidden text-white bg-[#020617]">
+            <iframe
+                src="/admin/seance"
+                title="Tableau des seances"
+                className="absolute inset-0 h-full w-full pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-[#020617]/60 backdrop-blur-[2px]" />
+
+            <div
+                className="relative z-10 min-h-screen flex justify-end"
+                onClick={() => router.push("/admin/seance")}
+            >
+                <aside
+                    className="w-full md:max-w-xl min-h-screen bg-[#111827]/95 border-l border-gray-700 shadow-2xl p-6 md:p-8 overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <h2 className="text-2xl font-semibold mb-2">Ajouter une seance</h2>
+                    <p className="text-gray-400 mb-6">Remplissez les informations de la seance</p>
+
+                    {feedback && (
+                        <p
+                            className={`mb-4 rounded-lg border px-3 py-2 text-sm ${
+                                feedback.type === "error"
+                                    ? "border-red-400/40 bg-red-500/10 text-red-200"
+                                    : "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+                            }`}
+                        >
+                            {feedback.text}
+                        </p>
+                    )}
 
                     <form onSubmit={handleSubmit}>
                         <input
@@ -139,6 +182,7 @@ export default function Dashboard() {
                         <input
                                 type="date"
                                 name="date"
+                            min={minDate}
                                 className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                             />
                         <input
@@ -198,10 +242,10 @@ export default function Dashboard() {
                             href="/admin"
                             className="block w-full mt-3 py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition text-center"
                         >
-                            Retour accueil
+                            Fermer
                         </Link>
                     </form>
-                </div>
+                </aside>
             </div>
         </div>
     );
