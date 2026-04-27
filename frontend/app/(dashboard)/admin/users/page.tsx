@@ -8,10 +8,12 @@ import { useEffect, useState } from "react";
 
 type UserRow = {
     id: string;
+    email: string;
     username: string;
     role: string;
     phoneNbr: string;
     birthDate: string;
+    password: string;
 };
 
 type PageMessage = {
@@ -50,18 +52,22 @@ export default function UsersTablePage() {
                 const usersSnapshot = await getDocs(collection(db, "users"));
                 const usersData = usersSnapshot.docs.map((userDoc) => {
                     const data = userDoc.data() as {
+                        email?: string;
                         username?: string;
                         role?: string;
                         phoneNbr?: string;
                         birthDate?: string;
+                        password?: string;
                     };
 
                     return {
                         id: userDoc.id,
+                        email: data.email || "-",
                         username: data.username || "-",
                         role: data.role || "-",
                         phoneNbr: data.phoneNbr || "-",
                         birthDate: data.birthDate || "-",
+                        password: data.password || "-",
                     };
                 });
 
@@ -101,8 +107,8 @@ export default function UsersTablePage() {
                 },
                 body: JSON.stringify({
                     userId: user.id,
-                    // email: user.email, // Ne pas envoyer l'email à Firestore
-                    // password: user.password, // Ne pas envoyer le mot de passe à Firestore
+                    email: user.email,
+                    password: user.password,
                     username: user.username,
                     role: user.role,
                     phoneNbr: user.phoneNbr,
@@ -203,11 +209,11 @@ export default function UsersTablePage() {
                             <thead>
                                 <tr className="text-cyan-300 border-b border-gray-700">
                                     <th className="py-3 pr-4">Nom</th>
-                                    {/* <th className="py-3 pr-4">Email</th> */}
+                                    <th className="py-3 pr-4">Email</th>
                                     <th className="py-3 pr-4">Role</th>
                                     <th className="py-3 pr-4">Telephone</th>
                                     <th className="py-3 pr-4">Date naissance</th>
-                                    {/* <th className="py-3 pr-4">Mot de passe</th> */}
+                                    <th className="py-3 pr-4">Mot de passe</th>
                                     <th className="py-3 pr-4">Action</th>
                                 </tr>
                             </thead>
@@ -221,7 +227,6 @@ export default function UsersTablePage() {
                                                 className="w-40 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                                             />
                                         </td>
-                                        {/*
                                         <td className="py-3 pr-4">
                                             <input
                                                 value={user.email}
@@ -229,7 +234,6 @@ export default function UsersTablePage() {
                                                 className="w-52 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                                             />
                                         </td>
-                                        */}
                                         <td className="py-3 pr-4">
                                             <input
                                                 value={user.role}
@@ -251,7 +255,6 @@ export default function UsersTablePage() {
                                                 className="w-36 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                                             />
                                         </td>
-                                        {/*
                                         <td className="py-3 pr-4">
                                             <input
                                                 value={user.password}
@@ -259,7 +262,6 @@ export default function UsersTablePage() {
                                                 className="w-40 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                                             />
                                         </td>
-                                        */}
                                         <td className="py-3 pr-4">
                                             <div className="flex items-center gap-2">
                                             <button
