@@ -31,8 +31,8 @@ export default function AddUserPage() {
             const user = userCredential.user;
 
             await setDoc(doc(db, "users", user.uid), {
-                email,
-                password,
+                //email,
+                //password,
                 username,
                 birthDate: birthdate,
                 role: userrole,
