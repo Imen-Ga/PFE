@@ -1,4 +1,5 @@
 "use client";
+import { MultiSelect } from "@/compoenents/MultiSelect";
 import { db } from "@/filebase";
 import { addDoc, collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
@@ -28,7 +29,10 @@ export default function Dashboard() {
             const usersSnapshot = await getDocs(collection(db, "users"));
             const usersData = usersSnapshot.docs.map((userDoc) => {
                 const data = userDoc.data() as { username?: string; role?: string };
+                const email = userDoc.id() 
+
                 return {
+                    email:email,
                     id: userDoc.id,
                     username: data.username || "Sans nom",
                     role: data.role || "",
@@ -67,13 +71,14 @@ export default function Dashboard() {
         participants: string[];
     }) => {
         try {
+            console.log(participants)
             await addDoc(collection(db, "seance"), {
                 seanceName: name,
                 date,
                 heure_de_debut: heurededebut,
                 heure_de_fin: heuredefin,
                 responsable,
-                participants,
+                participants: participants[0],
                 createdAt: new Date(),
             });
 
@@ -210,7 +215,7 @@ export default function Dashboard() {
                                 </option>
                             ))}
                         </select>
-                        <select
+                        {/* <select
                             value={participants}
                             onChange={(e) => setParticipants(e.target.value)}
                             name="participants"
@@ -224,7 +229,13 @@ export default function Dashboard() {
                                     {user.username}
                                 </option>
                             ))}
-                        </select>
+                        </select> */}
+                        <MultiSelect
+                            options={studentUsers}
+                            selected={participants }
+                            onChange={ setParticipants}
+                            placeholder="Selectionner les participants"
+                        />
                         <button
                             type="submit"
                             className="w-full py-3 rounded-lg bg-linear-to-r from-cyan-400 to-purple-500 hover:opacity-90 transition"
