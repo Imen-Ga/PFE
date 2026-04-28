@@ -3,6 +3,7 @@
 import { db } from "@/filebase";
 import { collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 type SeanceRow = {
@@ -260,17 +261,27 @@ export default function SeanceTable() {
                                                     type="button"
                                                     onClick={() => handleSaveSeance(seance)}
                                                     disabled={!!isSavingById[seance.id]}
-                                                    className="px-4 py-2 rounded-lg bg-linear-to-r from-cyan-400 to-purple-500 hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    title="Enregistrer"
                                                 >
-                                                    {isSavingById[seance.id] ? "Enregistrement..." : "Enregistrer"}
+                                                    {isSavingById[seance.id] ? (
+                                                        <span className="text-xs">...</span>
+                                                    ) : (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M17 19v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2Zm-6 0v-5h4v5h-4Z"/></svg>
+                                                    )}
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => handleDeleteSeance(seance)}
                                                     disabled={!!isDeletingById[seance.id]}
-                                                    className="px-4 py-2 rounded-lg border border-red-400 text-red-300 hover:bg-red-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg bg-red-700 hover:bg-red-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    title="Supprimer"
                                                 >
-                                                    {isDeletingById[seance.id] ? "Suppression..." : "Supprimer"}
+                                                    {isDeletingById[seance.id] ? (
+                                                        <span className="text-xs">...</span>
+                                                    ) : (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M7 21a2 2 0 0 1-2-2V7H3V5h4V3h6v2h4v2h-2v12a2 2 0 0 1-2 2H7Zm0-2h6V7H7v12Z"/></svg>
+                                                    )}
                                                 </button>
                                             </div>
                                         </td>

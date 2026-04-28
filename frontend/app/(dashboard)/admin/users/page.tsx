@@ -3,6 +3,7 @@
 import { db } from "@/filebase";
 import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 
@@ -49,29 +50,42 @@ export default function UsersTablePage() {
     useEffect(() => {
         const loadUsers = async () => {
             try {
+                // 1. Charger les utilisateurs Firestore
                 const usersSnapshot = await getDocs(collection(db, "users"));
                 const usersData = usersSnapshot.docs.map((userDoc) => {
                     const data = userDoc.data() as {
-                        email?: string;
                         username?: string;
                         role?: string;
                         phoneNbr?: string;
                         birthDate?: string;
                         password?: string;
                     };
-
                     return {
                         id: userDoc.id,
-                        email: data.email || "-",
                         username: data.username || "-",
                         role: data.role || "-",
                         phoneNbr: data.phoneNbr || "-",
                         birthDate: data.birthDate || "-",
                         password: data.password || "-",
+                        email: "-", // sera fusionné ensuite
                     };
                 });
 
-                setUsers(usersData);
+                // 2. Charger les emails depuis Authentication
+                const authRes = await fetch("/api/list-auth-users");
+                const authData = await authRes.json();
+                const authUsers: { uid: string; email: string | null }[] = authData.users || [];
+
+                // 3. Fusionner les emails dans les users Firestore (par id/uid)
+                const mergedUsers = usersData.map((user) => {
+                    const authUser = authUsers.find((au) => au.uid === user.id);
+                    return {
+                        ...user,
+                        email: authUser?.email || user.email,
+                    };
+                });
+
+                setUsers(mergedUsers);
             } catch (error) {
                 console.error(error);
                 setMessage({ type: "error", text: "Erreur lors du chargement des utilisateurs" });
@@ -79,7 +93,6 @@ export default function UsersTablePage() {
                 setIsLoading(false);
             }
         };
-
         loadUsers();
     }, []);
 
@@ -268,17 +281,27 @@ export default function UsersTablePage() {
                                                 type="button"
                                                 onClick={() => handleSaveUser(user)}
                                                 disabled={!!isSavingById[user.id]}
-                                                className="px-4 py-2 rounded-lg bg-linear-to-r from-cyan-400 to-purple-500 hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                title="Enregistrer"
                                             >
-                                                {isSavingById[user.id] ? "Enregistrement..." : "Enregistrer"}
+                                                {isSavingById[user.id] ? (
+                                                    <span className="text-xs">...</span>
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M17 19v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2Zm-6 0v-5h4v5h-4Z"/></svg>
+                                                )}
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => handleDeleteUser(user)}
                                                 disabled={!!isDeletingById[user.id]}
-                                                className="px-4 py-2 rounded-lg border border-red-400 text-red-300 hover:bg-red-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                className="p-2 rounded-lg bg-red-700 hover:bg-red-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                title="Supprimer"
                                             >
-                                                {isDeletingById[user.id] ? "Suppression..." : "Supprimer"}
+                                                {isDeletingById[user.id] ? (
+                                                    <span className="text-xs">...</span>
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M7 21a2 2 0 0 1-2-2V7H3V5h4V3h6v2h4v2h-2v12a2 2 0 0 1-2 2H7Zm0-2h6V7H7v12Z"/></svg>
+                                                )}
                                             </button>
                                             </div>
                                         </td>

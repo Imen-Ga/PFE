@@ -160,12 +160,6 @@ export default function AddUserPage() {
                             Ajouter utilisateur
                         </button>
                         <Link
-                            href="/admin/users"
-                            className="block w-full mt-3 py-3 rounded-lg bg-linear-to-r from-cyan-400 to-purple-500 hover:opacity-90 transition text-center"
-                        >
-                            Voir le tableau des utilisateurs
-                        </Link>
-                        <Link
                             href="/admin"
                             className="block w-full mt-3 py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition text-center"
                         >

@@ -10,6 +10,7 @@ type UserOption = {
     id: string;
     username: string;
     role: string;
+    email?: string;
 };
 
 export default function Dashboard() {
@@ -28,14 +29,12 @@ export default function Dashboard() {
         const loadUsers = async () => {
             const usersSnapshot = await getDocs(collection(db, "users"));
             const usersData = usersSnapshot.docs.map((userDoc) => {
-                const data = userDoc.data() as { username?: string; role?: string };
-                const email = userDoc.id() 
-
+                const data = userDoc.data() as { username?: string; role?: string; email?: string };
                 return {
-                    email:email,
                     id: userDoc.id,
                     username: data.username || "Sans nom",
                     role: data.role || "",
+                    email: data.email || userDoc.id,
                 };
             });
 
@@ -111,8 +110,20 @@ export default function Dashboard() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (selectedDate < today) {
-            setFeedback({ type: "error", text: "La date de la seance ne peut pas etre dans le passe." });
+            setFeedback({ type: "error", text: "La date de la seance ne peut pas être dans le passé." });
             return;
+        }
+
+        // Vérification heure de début dans le passé si la date est aujourd'hui
+        if (selectedDate.getTime() === today.getTime()) {
+            const now = new Date();
+            const [startHour, startMinute] = heurededebut.split(":").map(Number);
+            const startInMinutes = startHour * 60 + startMinute;
+            const nowInMinutes = now.getHours() * 60 + now.getMinutes();
+            if (startInMinutes < nowInMinutes) {
+                setFeedback({ type: "error", text: "L'heure de début doit être postérieure à l'heure actuelle." });
+                return;
+            }
         }
 
         const [startHour, startMinute] = heurededebut.split(":").map(Number);
@@ -242,12 +253,6 @@ export default function Dashboard() {
                         >
                             Ajouter seance
                         </button>
-                        <Link
-                            href="/admin/seance"
-                            className="block w-full mt-3 py-3 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition text-center"
-                        >
-                            Voir tableau des seances
-                        </Link>
 
                         <Link
                             href="/admin"

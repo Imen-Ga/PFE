@@ -5,6 +5,7 @@ type UserOption = {
     id: string;
     username: string;
     role: string;
+    email?: string;
 };
 
 // ── MultiSelect inline ──────────────────────────────────────────
@@ -114,7 +115,12 @@ export function MultiSelect({
                                                 </svg>
                                             )}
                                         </div>
-                                        {user.username}
+                                        <span className="flex flex-col">
+                                            <span>{user.username}</span>
+                                            {user.email && (
+                                                <span className="text-xs text-gray-400">{user.email}</span>
+                                            )}
+                                        </span>
                                     </div>
                                 );
                             })
