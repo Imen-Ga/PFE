@@ -2,6 +2,10 @@
 
 import { db } from "@/filebase";
 import { collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
+type UserRow = {
+    id: string;
+    username: string;
+};
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -24,6 +28,7 @@ type PageMessage = {
 export default function SeanceTable() {
     const [seances, setSeances] = useState<SeanceRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [users, setUsers] = useState<UserRow[]>([]);
     const [isSavingById, setIsSavingById] = useState<Record<string, boolean>>({});
     const [isDeletingById, setIsDeletingById] = useState<Record<string, boolean>>({});
     const [message, setMessage] = useState<PageMessage | null>(null);
@@ -39,8 +44,20 @@ export default function SeanceTable() {
     }, [message]);
 
     useEffect(() => {
-        const loadSeances = async () => {
+        const loadSeancesAndUsers = async () => {
             try {
+                // Charger les utilisateurs
+                const usersSnapshot = await getDocs(collection(db, "users"));
+                const usersData = usersSnapshot.docs.map((userDoc) => {
+                    const data = userDoc.data() as { username?: string };
+                    return {
+                        id: userDoc.id,
+                        username: data.username || "-",
+                    };
+                });
+                setUsers(usersData);
+
+                // Charger les séances
                 const seanceSnapshot = await getDocs(collection(db, "seance"));
                 const seanceData = seanceSnapshot.docs.map((seanceDoc) => {
                     const data = seanceDoc.data() as {
@@ -62,17 +79,15 @@ export default function SeanceTable() {
                         participants: Array.isArray(data.participants) ? data.participants : [],
                     };
                 });
-
                 setSeances(seanceData);
             } catch (error) {
                 console.error(error);
-                setMessage({ type: "error", text: "Erreur lors du chargement des seances" });
+                setMessage({ type: "error", text: "Erreur lors du chargement des seances ou utilisateurs" });
             } finally {
                 setIsLoading(false);
             }
         };
-
-        loadSeances();
+        loadSeancesAndUsers();
     }, []);
 
     const handleFieldChange = (
@@ -242,11 +257,11 @@ export default function SeanceTable() {
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
-                                            <input
-                                                value={seance.responsable}
-                                                onChange={(e) => handleFieldChange(seance.id, "responsable", e.target.value)}
-                                                className="w-40 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
-                                            />
+                                            {/* Affiche le nom du responsable si trouvé, sinon l'UID */}
+                                            {(() => {
+                                                const user = users.find((u) => u.id === seance.responsable);
+                                                return user ? user.username : seance.responsable;
+                                            })()}
                                         </td>
                                         <td className="py-3 pr-4">
                                             <input
