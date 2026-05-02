@@ -10,11 +10,11 @@ type UserOption = {
 };
 
 type SelectedUser = {
+    id: string;
     username: string;
-    email: string;
+    email?: string;
 };
 
-// ── MultiSelect inline ──────────────────────────────────────────
 export function MultiSelect({
     options,
     selected,
@@ -22,8 +22,8 @@ export function MultiSelect({
     placeholder = "Sélectionner...",
 }: {
     options: UserOption[];
-    selected: SelectedUser[]; // ✅ propre
-    onChange: (val: SelectedUser[]) => void; // ✅ propre
+    selected: SelectedUser[];
+    onChange: (val: SelectedUser[]) => void;
     placeholder?: string;
 }) {
     const [open, setOpen] = useState(false);
@@ -34,40 +34,19 @@ export function MultiSelect({
         o.username?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const toggle = async (user: UserOption) => {
-        const exists = selected.some(
-            (s) => s.username === user.username
-        );
-
-        try {
-            const res = await fetch("/api/get-user", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
+    const toggle = (user: UserOption) => {
+        const exists = selected.some((s) => s.id === user.id);
+        if (exists) {
+            onChange(selected.filter((s) => s.id !== user.id));
+        } else {
+            onChange([
+                ...selected,
+                {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email || "",
                 },
-                body: JSON.stringify({
-                    userId: user.id,
-                }),
-            });
-
-            if (!res.ok) throw new Error("Erreur API");
-
-            const userData = await res.json();
-
-            const next = exists
-                ? selected.filter((s) => s.username !== user.username)
-                : [
-                    ...selected,
-                    {
-                        username: user.username,
-                        email: userData.email || "",
-                    },
-                ];
-
-            onChange(next);
-
-        } catch (error) {
-            console.error("Erreur:", error);
+            ]);
         }
     };
 
@@ -83,7 +62,6 @@ export function MultiSelect({
 
     return (
         <div ref={ref} className="relative w-full mb-4">
-            {/* Trigger */}
             <div
                 onClick={() => setOpen((v) => !v)}
                 className={`w-full min-h-[48px] p-3 bg-[#0b0f1a] border rounded-lg cursor-pointer flex items-center justify-between gap-2 transition-colors ${
@@ -96,7 +74,7 @@ export function MultiSelect({
                     ) : (
                         selected.map((user) => (
                             <span
-                                key={user.username}
+                                key={user.id}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-900/50 text-cyan-300 border border-cyan-700 rounded-full text-xs font-medium"
                             >
                                 {user.username}
@@ -104,12 +82,7 @@ export function MultiSelect({
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        // ✅ suppression sans appel API inutile
-                                        onChange(
-                                            selected.filter(
-                                                (s) => s.username !== user.username
-                                            )
-                                        );
+                                        onChange(selected.filter((s) => s.id !== user.id));
                                     }}
                                     className="opacity-60 hover:opacity-100 leading-none"
                                 >
@@ -124,7 +97,6 @@ export function MultiSelect({
                 </span>
             </div>
 
-            {/* Dropdown */}
             {open && (
                 <div className="absolute z-50 w-full mt-1 bg-[#111827] border border-gray-700 rounded-lg shadow-xl overflow-hidden">
                     <div className="px-3 py-2 border-b border-gray-700">
@@ -145,10 +117,7 @@ export function MultiSelect({
                             </div>
                         ) : (
                             filtered.map((user) => {
-                                const isSelected = selected.some(
-                                    (s) => s.username === user.username
-                                );
-
+                                const isSelected = selected.some((s) => s.id === user.id);
                                 return (
                                     <div
                                         key={user.id}
@@ -178,7 +147,6 @@ export function MultiSelect({
                                                 </svg>
                                             )}
                                         </div>
-
                                         <span className="flex flex-col">
                                             <span>{user.username}</span>
                                             {user.email && (

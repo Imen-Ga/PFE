@@ -2,13 +2,13 @@
 
 import { db } from "@/filebase";
 import { collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 type UserRow = {
     id: string;
     username: string;
 };
-import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useState } from "react";
 
 type SeanceRow = {
     id: string;
@@ -16,7 +16,7 @@ type SeanceRow = {
     date: string;
     heure_de_debut: string;
     heure_de_fin: string;
-    responsable: string;
+    responsable: string | any; // Peut être string ou objet
     participants: string[];
 };
 
@@ -35,18 +35,13 @@ export default function SeanceTable() {
 
     useEffect(() => {
         if (!message) return;
-
-        const timeoutId = window.setTimeout(() => {
-            setMessage(null);
-        }, 3500);
-
+        const timeoutId = window.setTimeout(() => setMessage(null), 3500);
         return () => window.clearTimeout(timeoutId);
     }, [message]);
 
     useEffect(() => {
         const loadSeancesAndUsers = async () => {
             try {
-                // Charger les utilisateurs
                 const usersSnapshot = await getDocs(collection(db, "users"));
                 const usersData = usersSnapshot.docs.map((userDoc) => {
                     const data = userDoc.data() as { username?: string };
@@ -57,7 +52,6 @@ export default function SeanceTable() {
                 });
                 setUsers(usersData);
 
-                // Charger les séances
                 const seanceSnapshot = await getDocs(collection(db, "seance"));
                 const seanceData = seanceSnapshot.docs.map((seanceDoc) => {
                     const data = seanceDoc.data() as {
@@ -65,7 +59,7 @@ export default function SeanceTable() {
                         date?: string;
                         heure_de_debut?: string;
                         heure_de_fin?: string;
-                        responsable?: string;
+                        responsable?: string | any;
                         participants?: string[];
                     };
 
@@ -82,7 +76,7 @@ export default function SeanceTable() {
                 setSeances(seanceData);
             } catch (error) {
                 console.error(error);
-                setMessage({ type: "error", text: "Erreur lors du chargement des seances ou utilisateurs" });
+                setMessage({ type: "error", text: "Erreur lors du chargement" });
             } finally {
                 setIsLoading(false);
             }
@@ -90,13 +84,34 @@ export default function SeanceTable() {
         loadSeancesAndUsers();
     }, []);
 
+    // ✅ Fonction pour extraire le nom du responsable (string ou objet)
+    const getResponsableDisplay = (responsable: string | any): string => {
+        // Si c'est un objet
+        if (typeof responsable === 'object' && responsable !== null) {
+            if (responsable.username) return responsable.username;
+            if (responsable.id) return responsable.id;
+            return "Responsable inconnu";
+        }
+        // Si c'est un string (ID)
+        const user = users.find((u) => u.id === responsable);
+        return user ? user.username : responsable;
+    };
+
+    // ✅ Fonction pour extraire l'ID du responsable (pour les mises à jour)
+    const getResponsableId = (responsable: string | any): string => {
+        if (typeof responsable === 'object' && responsable !== null) {
+            return responsable.id || "";
+        }
+        return responsable;
+    };
+
     const handleFieldChange = (
         seanceId: string,
         field: "seanceName" | "date" | "heure_de_debut" | "heure_de_fin" | "responsable",
         value: string,
     ) => {
         setSeances((prev) =>
-            prev.map((seance) => (seance.id === seanceId ? { ...seance, [field]: value } : seance)),
+            prev.map((seance) => (seance.id === seanceId ? { ...seance, [field]: value } : seance))
         );
     };
 
@@ -105,13 +120,12 @@ export default function SeanceTable() {
             .split(",")
             .map((item) => item.trim())
             .filter(Boolean);
-
         setSeances((prev) => prev.map((seance) => (seance.id === seanceId ? { ...seance, participants } : seance)));
     };
 
     const handleSaveSeance = async (seance: SeanceRow) => {
         if (!seance.seanceName || !seance.date || !seance.heure_de_debut || !seance.heure_de_fin || !seance.responsable) {
-            setMessage({ type: "error", text: "Tous les champs obligatoires doivent etre remplis" });
+            setMessage({ type: "error", text: "Tous les champs obligatoires doivent être remplis" });
             return;
         }
 
@@ -119,53 +133,53 @@ export default function SeanceTable() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (selectedDate < today) {
-            setMessage({ type: "error", text: "La date de la seance ne peut pas etre dans le passe" });
+            setMessage({ type: "error", text: "La date ne peut pas être dans le passé" });
             return;
         }
 
         const [startHour, startMinute] = seance.heure_de_debut.split(":").map(Number);
         const [endHour, endMinute] = seance.heure_de_fin.split(":").map(Number);
-        const startInMinutes = startHour * 60 + startMinute;
-        const endInMinutes = endHour * 60 + endMinute;
-
-        if (endInMinutes < startInMinutes) {
-            setMessage({ type: "error", text: "L'heure de fin doit etre superieure ou egale a l'heure de debut" });
+        
+        if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
+            setMessage({ type: "error", text: "L'heure de fin doit être après l'heure de début" });
             return;
         }
 
         try {
             setIsSavingById((prev) => ({ ...prev, [seance.id]: true }));
-
+            
+            // Extraire l'ID du responsable pour la sauvegarde
+            const responsableId = getResponsableId(seance.responsable);
+            
             await updateDoc(doc(db, "seance", seance.id), {
                 seanceName: seance.seanceName,
                 date: seance.date,
                 heure_de_debut: seance.heure_de_debut,
                 heure_de_fin: seance.heure_de_fin,
-                responsable: seance.responsable,
+                responsable: responsableId,
                 participants: seance.participants,
             });
 
-            setMessage({ type: "success", text: "Seance modifiee" });
+            setMessage({ type: "success", text: "Séance modifiée" });
         } catch (error) {
             console.error(error);
-            setMessage({ type: "error", text: "Erreur lors de la modification de la seance" });
+            setMessage({ type: "error", text: "Erreur lors de la modification" });
         } finally {
             setIsSavingById((prev) => ({ ...prev, [seance.id]: false }));
         }
     };
 
     const handleDeleteSeance = async (seance: SeanceRow) => {
-        const isConfirmed = window.confirm(`Supprimer la seance ${seance.seanceName} ?`);
-        if (!isConfirmed) return;
+        if (!confirm(`Supprimer la séance "${seance.seanceName}" ?`)) return;
 
         try {
             setIsDeletingById((prev) => ({ ...prev, [seance.id]: true }));
             await deleteDoc(doc(db, "seance", seance.id));
             setSeances((prev) => prev.filter((item) => item.id !== seance.id));
-            setMessage({ type: "success", text: "Seance supprimee" });
+            setMessage({ type: "success", text: "Séance supprimée" });
         } catch (error) {
             console.error(error);
-            setMessage({ type: "error", text: "Erreur lors de la suppression de la seance" });
+            setMessage({ type: "error", text: "Erreur lors de la suppression" });
         } finally {
             setIsDeletingById((prev) => ({ ...prev, [seance.id]: false }));
         }
@@ -174,14 +188,14 @@ export default function SeanceTable() {
     return (
         <div className="min-h-screen p-6 md:p-10 text-white bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
             <div className="max-w-6xl mx-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
-                <div className="flex items-center justify-between gap-4 mb-6">
-                    <h1 className="text-2xl md:text-3xl font-bold">Liste des seances</h1>
+                <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                    <h1 className="text-2xl md:text-3xl font-bold">Liste des séances</h1>
                     <div className="flex items-center gap-3">
                         <Link
                             href="/admin/ajouter-seance"
                             className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
                         >
-                            Ajouter seance
+                            Ajouter séance
                         </Link>
                         <Link
                             href="/admin"
@@ -193,13 +207,11 @@ export default function SeanceTable() {
                 </div>
 
                 {message && (
-                    <div
-                        className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-                            message.type === "success"
-                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                                : "border-red-500/40 bg-red-500/10 text-red-300"
-                        }`}
-                    >
+                    <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                        message.type === "success"
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                            : "border-red-500/40 bg-red-500/10 text-red-300"
+                    }`}>
                         {message.text}
                     </div>
                 )}
@@ -207,29 +219,29 @@ export default function SeanceTable() {
                 {isLoading ? (
                     <p className="text-gray-300">Chargement...</p>
                 ) : seances.length === 0 ? (
-                    <p className="text-gray-400">Aucune seance trouvee.</p>
+                    <p className="text-gray-400">Aucune séance trouvée.</p>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left border-collapse">
                             <thead>
                                 <tr className="text-cyan-300 border-b border-gray-700">
-                                    <th className="py-3 pr-4">Nom de la seance</th>
+                                    <th className="py-3 pr-4">Nom</th>
                                     <th className="py-3 pr-4">Date</th>
-                                    <th className="py-3 pr-4">Heure debut</th>
-                                    <th className="py-3 pr-4">Heure fin</th>
+                                    <th className="py-3 pr-4">Début</th>
+                                    <th className="py-3 pr-4">Fin</th>
                                     <th className="py-3 pr-4">Responsable</th>
                                     <th className="py-3 pr-4">Participants</th>
-                                    <th className="py-3 pr-4">Action</th>
+                                    <th className="py-3 pr-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {seances.map((seance) => (
-                                    <tr key={seance.id} className="border-b border-gray-800 text-gray-200">
+                                    <tr key={seance.id} className="border-b border-gray-800">
                                         <td className="py-3 pr-4">
                                             <input
                                                 value={seance.seanceName}
                                                 onChange={(e) => handleFieldChange(seance.id, "seanceName", e.target.value)}
-                                                className="w-44 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
+                                                className="w-44 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
@@ -237,7 +249,7 @@ export default function SeanceTable() {
                                                 type="date"
                                                 value={seance.date}
                                                 onChange={(e) => handleFieldChange(seance.id, "date", e.target.value)}
-                                                className="w-40 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
+                                                className="w-40 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
@@ -245,7 +257,7 @@ export default function SeanceTable() {
                                                 type="time"
                                                 value={seance.heure_de_debut}
                                                 onChange={(e) => handleFieldChange(seance.id, "heure_de_debut", e.target.value)}
-                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
+                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
@@ -253,50 +265,39 @@ export default function SeanceTable() {
                                                 type="time"
                                                 value={seance.heure_de_fin}
                                                 onChange={(e) => handleFieldChange(seance.id, "heure_de_fin", e.target.value)}
-                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
+                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
-                                            {/* Affiche le nom du responsable si trouvé, sinon l'UID */}
-                                            {(() => {
-                                                const user = users.find((u) => u.id === seance.responsable);
-                                                return user ? user.username : seance.responsable;
-                                            })()}
+                                            {/* ✅ Affichage sécurisé du responsable */}
+                                            <div className="p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg">
+                                                {getResponsableDisplay(seance.responsable)}
+                                            </div>
                                         </td>
                                         <td className="py-3 pr-4">
                                             <input
                                                 value={seance.participants.join(", ")}
                                                 onChange={(e) => handleParticipantsChange(seance.id, e.target.value)}
-                                                className="w-56 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
+                                                className="w-56 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    type="button"
                                                     onClick={() => handleSaveSeance(seance)}
                                                     disabled={!!isSavingById[seance.id]}
-                                                    className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 transition disabled:opacity-50"
                                                     title="Enregistrer"
                                                 >
-                                                    {isSavingById[seance.id] ? (
-                                                        <span className="text-xs">...</span>
-                                                    ) : (
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M17 19v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2Zm-6 0v-5h4v5h-4Z"/></svg>
-                                                    )}
+                                                    {isSavingById[seance.id] ? "⏳" : "💾"}
                                                 </button>
                                                 <button
-                                                    type="button"
                                                     onClick={() => handleDeleteSeance(seance)}
                                                     disabled={!!isDeletingById[seance.id]}
-                                                    className="p-2 rounded-lg bg-red-700 hover:bg-red-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg bg-red-700 hover:bg-red-600 transition disabled:opacity-50"
                                                     title="Supprimer"
                                                 >
-                                                    {isDeletingById[seance.id] ? (
-                                                        <span className="text-xs">...</span>
-                                                    ) : (
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M7 21a2 2 0 0 1-2-2V7H3V5h4V3h6v2h4v2h-2v12a2 2 0 0 1-2 2H7Zm0-2h6V7H7v12Z"/></svg>
-                                                    )}
+                                                    {isDeletingById[seance.id] ? "⏳" : "🗑️"}
                                                 </button>
                                             </div>
                                         </td>
