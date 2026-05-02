@@ -1,4 +1,5 @@
-"use client";;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 import { useEffect, useRef, useState } from "react";
 
 type UserOption = {
@@ -6,6 +7,11 @@ type UserOption = {
     username: string;
     role: string;
     email?: string;
+};
+
+type SelectedUser = {
+    username: string;
+    email: string;
 };
 
 // ── MultiSelect inline ──────────────────────────────────────────
@@ -16,8 +22,8 @@ export function MultiSelect({
     placeholder = "Sélectionner...",
 }: {
     options: UserOption[];
-    selected: string[];
-    onChange: (val: string[]) => void;
+    selected: SelectedUser[]; // ✅ propre
+    onChange: (val: SelectedUser[]) => void; // ✅ propre
     placeholder?: string;
 }) {
     const [open, setOpen] = useState(false);
@@ -28,17 +34,48 @@ export function MultiSelect({
         o.username?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const toggle = (username: string) => {
-        const next = selected.includes(username)
-            ? selected.filter((s) => s !== username)
-            : [...selected, username];
-        onChange(next);
+    const toggle = async (user: UserOption) => {
+        const exists = selected.some(
+            (s) => s.username === user.username
+        );
+
+        try {
+            const res = await fetch("/api/get-user", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    userId: user.id,
+                }),
+            });
+
+            if (!res.ok) throw new Error("Erreur API");
+
+            const userData = await res.json();
+
+            const next = exists
+                ? selected.filter((s) => s.username !== user.username)
+                : [
+                    ...selected,
+                    {
+                        username: user.username,
+                        email: userData.email || "",
+                    },
+                ];
+
+            onChange(next);
+
+        } catch (error) {
+            console.error("Erreur:", error);
+        }
     };
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node))
+            if (ref.current && !ref.current.contains(e.target as Node)) {
                 setOpen(false);
+            }
         };
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
@@ -57,15 +94,23 @@ export function MultiSelect({
                     {selected.length === 0 ? (
                         <span className="text-gray-500 text-sm">{placeholder}</span>
                     ) : (
-                        selected?.map((name) => (
+                        selected.map((user) => (
                             <span
-                                key={name}
+                                key={user.username}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-900/50 text-cyan-300 border border-cyan-700 rounded-full text-xs font-medium"
                             >
-                                {name}
+                                {user.username}
                                 <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); toggle(name); }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // ✅ suppression sans appel API inutile
+                                        onChange(
+                                            selected.filter(
+                                                (s) => s.username !== user.username
+                                            )
+                                        );
+                                    }}
                                     className="opacity-60 hover:opacity-100 leading-none"
                                 >
                                     ×
@@ -92,33 +137,54 @@ export function MultiSelect({
                             className="w-full text-sm bg-transparent outline-none text-white placeholder-gray-500"
                         />
                     </div>
+
                     <div className="max-h-48 overflow-y-auto">
                         {filtered.length === 0 ? (
-                            <div className="py-4 text-center text-sm text-gray-500">Aucun résultat</div>
+                            <div className="py-4 text-center text-sm text-gray-500">
+                                Aucun résultat
+                            </div>
                         ) : (
                             filtered.map((user) => {
-                                const isSelected = selected.includes(user.username);
+                                const isSelected = selected.some(
+                                    (s) => s.username === user.username
+                                );
+
                                 return (
                                     <div
                                         key={user.id}
-                                        onClick={() => toggle(user.username)}
+                                        onClick={() => toggle(user)}
                                         className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer text-sm transition-colors ${
-                                            isSelected ? "bg-cyan-900/20 text-white" : "text-gray-300 hover:bg-gray-800"
+                                            isSelected
+                                                ? "bg-cyan-900/20 text-white"
+                                                : "text-gray-300 hover:bg-gray-800"
                                         }`}
                                     >
-                                        <div className={`w-4 h-4 flex-shrink-0 rounded flex items-center justify-center border transition-all ${
-                                            isSelected ? "bg-cyan-500 border-cyan-500" : "border-gray-600"
-                                        }`}>
+                                        <div
+                                            className={`w-4 h-4 flex-shrink-0 rounded flex items-center justify-center border ${
+                                                isSelected
+                                                    ? "bg-cyan-500 border-cyan-500"
+                                                    : "border-gray-600"
+                                            }`}
+                                        >
                                             {isSelected && (
-                                                <svg viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" className="w-2.5 h-2.5">
+                                                <svg
+                                                    viewBox="0 0 10 10"
+                                                    fill="none"
+                                                    stroke="white"
+                                                    strokeWidth="2"
+                                                    className="w-2.5 h-2.5"
+                                                >
                                                     <polyline points="1.5,5 4,7.5 8.5,2.5" />
                                                 </svg>
                                             )}
                                         </div>
+
                                         <span className="flex flex-col">
                                             <span>{user.username}</span>
                                             {user.email && (
-                                                <span className="text-xs text-gray-400">{user.email}</span>
+                                                <span className="text-xs text-gray-400">
+                                                    {user.email}
+                                                </span>
                                             )}
                                         </span>
                                     </div>
@@ -126,10 +192,17 @@ export function MultiSelect({
                             })
                         )}
                     </div>
+
                     <div className="flex justify-between items-center px-3 py-2 border-t border-gray-700">
-                        <span className="text-xs text-gray-500">{selected.length} sélectionné(s)</span>
+                        <span className="text-xs text-gray-500">
+                            {selected.length} sélectionné(s)
+                        </span>
                         {selected.length > 0 && (
-                            <button type="button" onClick={() => onChange([])} className="text-xs text-cyan-400 hover:underline">
+                            <button
+                                type="button"
+                                onClick={() => onChange([])}
+                                className="text-xs text-cyan-400 hover:underline"
+                            >
                                 Tout effacer
                             </button>
                         )}
