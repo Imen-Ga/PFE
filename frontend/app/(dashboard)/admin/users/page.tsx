@@ -32,6 +32,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
 export default function UsersTablePage() {
     const [users, setUsers] = useState<UserRow[]>([]);
+    const [originalUsers, setOriginalUsers] = useState<UserRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingById, setIsSavingById] = useState<Record<string, boolean>>({});
     const [isDeletingById, setIsDeletingById] = useState<Record<string, boolean>>({});
@@ -86,6 +87,7 @@ export default function UsersTablePage() {
                 });
 
                 setUsers(mergedUsers);
+                setOriginalUsers(mergedUsers);
             } catch (error) {
                 console.error(error);
                 setMessage({ type: "error", text: "Erreur lors du chargement des utilisateurs" });
@@ -106,6 +108,20 @@ export default function UsersTablePage() {
                     }
                     : user,
             ),
+        );
+    };
+
+    // Vérifie si un utilisateur a été modifié
+    const isUserModified = (user: UserRow) => {
+        const original = originalUsers.find((u) => u.id === user.id);
+        if (!original) return false;
+        return (
+            user.username !== original.username ||
+            user.email !== original.email ||
+            user.role !== original.role ||
+            user.phoneNbr !== original.phoneNbr ||
+            user.birthDate !== original.birthDate ||
+            user.password !== original.password
         );
     };
 
@@ -280,11 +296,11 @@ export default function UsersTablePage() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleSaveUser(user)}
-                                                disabled={!!isSavingById[user.id]}
+                                                disabled={!!isSavingById[user.id] || !isUserModified(user)}
                                                 className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                                                 title="Enregistrer"
                                             >
-                                                {isSavingById[user.id) ? (
+                                                {isSavingById[user.id] ? (
                                                     <span className="text-xs">...</span>
                                                 ) : (
                                                     <span role="img" aria-label="save">💾</span>

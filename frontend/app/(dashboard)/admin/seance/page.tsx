@@ -26,6 +26,7 @@ type PageMessage = {
 };
 
 export default function SeanceTable() {
+                const [originalSeances, setOriginalSeances] = useState<SeanceRow[]>([]);
             // Pour la sélection multiple à supprimer
             const [selectedToRemove, setSelectedToRemove] = useState<Record<string, string[]>>({});
         const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -77,6 +78,7 @@ export default function SeanceTable() {
                     };
                 });
                 setSeances(seanceData);
+                setOriginalSeances(seanceData);
             } catch (error) {
                 console.error(error);
                 setMessage({ type: "error", text: "Erreur lors du chargement" });
@@ -116,6 +118,28 @@ export default function SeanceTable() {
         setSeances((prev) =>
             prev.map((seance) => (seance.id === seanceId ? { ...seance, [field]: value } : seance))
         );
+    };
+
+    // Vérifie si une séance a été modifiée
+    const isSeanceModified = (seance: SeanceRow) => {
+        const original = originalSeances.find((s) => s.id === seance.id);
+        if (!original) return false;
+        // Comparer les champs simples
+        if (
+            seance.seanceName !== original.seanceName ||
+            seance.date !== original.date ||
+            seance.heure_de_debut !== original.heure_de_debut ||
+            seance.heure_de_fin !== original.heure_de_fin ||
+            getResponsableId(seance.responsable) !== getResponsableId(original.responsable)
+        ) {
+            return true;
+        }
+        // Comparer les participants (ordre et contenu)
+        if (seance.participants.length !== original.participants.length) return true;
+        for (let i = 0; i < seance.participants.length; i++) {
+            if (seance.participants[i] !== original.participants[i]) return true;
+        }
+        return false;
     };
 
     // (Plus besoin de handleToggleParticipant, suppression uniquement)
@@ -366,7 +390,7 @@ export default function SeanceTable() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => handleSaveSeance(seance)}
-                                                    disabled={!!isSavingById[seance.id]}
+                                                    disabled={!!isSavingById[seance.id] || !isSeanceModified(seance)}
                                                     className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 transition disabled:opacity-50"
                                                     title="Enregistrer"
                                                 >
