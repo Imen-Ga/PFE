@@ -284,10 +284,10 @@ export default function UsersTablePage() {
                                                 className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                                                 title="Enregistrer"
                                             >
-                                                {isSavingById[user.id] ? (
+                                                {isSavingById[user.id) ? (
                                                     <span className="text-xs">...</span>
                                                 ) : (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M17 19v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2Zm-6 0v-5h4v5h-4Z"/></svg>
+                                                    <span role="img" aria-label="save">💾</span>
                                                 )}
                                             </button>
                                             <button
@@ -300,7 +300,7 @@ export default function UsersTablePage() {
                                                 {isDeletingById[user.id] ? (
                                                     <span className="text-xs">...</span>
                                                 ) : (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M7 21a2 2 0 0 1-2-2V7H3V5h4V3h6v2h4v2h-2v12a2 2 0 0 1-2 2H7Zm0-2h6V7H7v12Z"/></svg>
+                                                    <span role="img" aria-label="delete">🗑️</span>
                                                 )}
                                             </button>
                                             </div>
