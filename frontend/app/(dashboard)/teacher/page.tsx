@@ -6,6 +6,11 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+type UserRow = {
+  id: string;
+  username: string;
+};
+
 type SeanceRow = {
   id: string;
   seanceName: any;
@@ -20,6 +25,7 @@ export default function TeacherDashboard() {
   const [seances, setSeances] = useState<SeanceRow[]>([]);
   const [selectedSeance, setSelectedSeance] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<UserRow[]>([]);
 
   // 🔒 SAFE DISPLAY
   const safe = (value: any) => {
@@ -29,6 +35,13 @@ export default function TeacherDashboard() {
       return value.username || value.email || "-";
     }
     return "-";
+  };
+
+  const getUserName = (idOrObj: any) => {
+    if (!idOrObj) return "-";
+    if (typeof idOrObj === "object") return idOrObj.username || idOrObj.email || "-";
+    const user = users.find((u) => u.id === idOrObj);
+    return user ? user.username : idOrObj;
   };
 
   useEffect(() => {
@@ -42,6 +55,13 @@ export default function TeacherDashboard() {
       }
 
       try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const usersData = usersSnap.docs.map((doc) => ({
+          id: doc.id,
+          username: doc.data().username || "-",
+        }));
+        setUsers(usersData);
+
         const snap = await getDocs(collection(db, "seance"));
 
         const data = snap.docs
@@ -61,8 +81,8 @@ export default function TeacherDashboard() {
             };
           })
           // ✅ FILTRE PAR ENSEIGNANT CONNECTÉ
-          .filter((s) => s.responsable === user.uid); 
-          // ⚠️ si tu utilises uid → remplace par user.uid
+          .filter((s) => s.responsable === user.uid);
+        // ⚠️ si tu utilises uid → remplace par user.uid
 
         setSeances(data);
 
@@ -136,7 +156,7 @@ export default function TeacherDashboard() {
           .filter((s) => s.id === selectedSeance)
           .map((s) => (
             <div key={s.id} className="bg-slate-800/50 rounded-xl border border-slate-700 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-cyan-500/50">
-              
+
               {/* Header with gradient accent */}
               <div className="bg-gradient-to-r from-cyan-500/20 via-transparent to-transparent p-6 border-b border-slate-700">
                 <div className="flex items-start justify-between flex-wrap gap-4">
@@ -146,18 +166,18 @@ export default function TeacherDashboard() {
                     </h2>
                     <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-400">
                       <span className="flex items-center gap-1">
-                         {safe(s.date)}
+                        {safe(s.date)}
                       </span>
                       <span className="flex items-center gap-1">
-                         {safe(s.heure_de_debut)} → {safe(s.heure_de_fin)}
+                        {safe(s.heure_de_debut)} → {safe(s.heure_de_fin)}
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* Badge responsable */}
                   <div className="bg-cyan-500/10 px-4 py-2 rounded-full border border-cyan-500/30">
                     <span className="text-cyan-300 text-sm font-medium">
-                       Responsable : {safe(s.responsable)}
+                      Responsable : {getUserName(s.responsable)}
                     </span>
                   </div>
                 </div>
@@ -173,7 +193,7 @@ export default function TeacherDashboard() {
                     {s.participants.length} étudiant{s.participants.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                
+
                 <div className="overflow-x-auto rounded-lg border border-slate-700">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-900">
@@ -194,7 +214,7 @@ export default function TeacherDashboard() {
                         s.participants.map((p, i) => (
                           <tr key={i} className="border-t border-slate-700/50 hover:bg-slate-700/30 transition-colors duration-150">
                             <td className="py-3 px-4 text-gray-200 font-medium">
-                              {safe(p)}
+                              {getUserName(p)}
                             </td>
                             <td className="py-3 px-4 text-center">
                               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-lg text-red-300 text-xs font-semibold border border-red-500/30">

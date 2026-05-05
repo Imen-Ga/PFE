@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/filebase";
 import { addCurrentUserInfo } from "@/redux/slice/authSlice";
 
@@ -59,39 +59,82 @@ export default function StudentDashboard() {
       setSeances([]);
       return;
     }
-    
+
     const fetchSeances = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("/api/get-seances-etudiant", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: currentUser.uid }),
+
+        // 1. Get users for names
+        const usersSnap = await getDocs(collection(db, "users"));
+        const usersData = usersSnap.docs.reduce((acc, doc) => {
+          acc[doc.id] = doc.data().username || doc.data().email || "-";
+          return acc;
+        }, {} as Record<string, string>);
+
+        // 2. Get seances
+        const seancesSnap = await getDocs(collection(db, "seance"));
+        const fetchedSeances: Seance[] = [];
+
+        seancesSnap.docs.forEach(doc => {
+          const data = doc.data() as any;
+          const participants = Array.isArray(data.participants) ? data.participants : [];
+
+          let isParticipant = false;
+          for (const p of participants) {
+            if (typeof p === 'string' && p === currentUser.uid) {
+              isParticipant = true;
+              break;
+            } else if (typeof p === 'object' && p !== null) {
+              if (p.id === currentUser.uid || p.email === currentUser.uid) {
+                isParticipant = true;
+                break;
+              }
+            }
+          }
+
+          if (isParticipant) {
+            let responsableName = "Non assigné";
+            if (data.responsable) {
+              if (typeof data.responsable === 'string') {
+                responsableName = usersData[data.responsable] || data.responsable;
+              } else if (typeof data.responsable === 'object') {
+                responsableName = data.responsable.username || data.responsable.email || "Responsable";
+              }
+            }
+
+            const timeStr = data.heure_de_debut && data.heure_de_fin
+              ? `${data.heure_de_debut} - ${data.heure_de_fin}`
+              : data.heure_de_debut || data.time || "Horaire non défini";
+
+            fetchedSeances.push({
+              id: doc.id,
+              date: data.date || "Date non définie",
+              time: timeStr,
+              matiere: data.seanceName || data.matiere || data.session || "Sans titre",
+              enseignant: responsableName,
+              status: "Absent", // Par défaut
+            });
+          }
         });
-        
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        
-        if (data.success) {
-          setSeances(data.seances || []);
-        } else {
-          console.error("Erreur API:", data.error);
-          setError(data.error || "Erreur lors du chargement des séances");
-          setSeances([]);
-        }
+
+        fetchedSeances.sort((a, b) => {
+          if (!a.date || a.date === "Date non définie") return 1;
+          if (!b.date || b.date === "Date non définie") return -1;
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+
+        setSeances(fetchedSeances);
+
       } catch (e: any) {
         console.error("Erreur fetch:", e);
-        setError(e.message || "Erreur de connexion au serveur");
+        setError(e.message || "Erreur de connexion");
         setSeances([]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchSeances();
   }, [currentUser]);
 
@@ -100,7 +143,7 @@ export default function StudentDashboard() {
   const presents = seances.filter(s => s.status === "Présent" || s.status === "Present").length;
   const absents = seances.filter(s => s.status === "Absent").length;
   const taux = total > 0 ? ((presents / total) * 100).toFixed(1) + "%" : "0%";
-  
+
   const stats = [
     { title: "Total des séances", value: total, color: "from-blue-500 to-cyan-500" },
     { title: "Présents", value: presents, color: "from-emerald-500 to-green-500" },
@@ -149,7 +192,7 @@ export default function StudentDashboard() {
             </div>
           )}
         </div>
-        
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, index) => (
@@ -159,7 +202,7 @@ export default function StudentDashboard() {
             </div>
           ))}
         </div>
-        
+
         {/* Tableau d'historique */}
         <div className="bg-white/10 backdrop-blur-xl rounded-xl p-6 shadow-2xl border border-white/20">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
@@ -174,7 +217,7 @@ export default function StudentDashboard() {
               🔄 Actualiser
             </button>
           </div>
-          
+
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
@@ -204,12 +247,11 @@ export default function StudentDashboard() {
                 <table className="w-full text-sm">
                   <thead className="text-left border-b border-white/20">
                     <tr className="text-gray-300">
-                      <th className="pb-3 font-semibold">📅 Date</th>
-                      <th className="pb-3 font-semibold">⏰ Horaire</th>
-                      <th className="pb-3 font-semibold">📚 Séance</th>
-                      <th className="pb-3 font-semibold">👨‍🏫 Enseignant</th>
-                      <th className="pb-3 font-semibold">✅ Statut</th>
-                      <th className="pb-3 font-semibold">ℹ️ Action</th>
+                      <th className="pb-3 font-semibold"> Date</th>
+                      <th className="pb-3 font-semibold"> Horaire</th>
+                      <th className="pb-3 font-semibold"> Séance</th>
+                      <th className="pb-3 font-semibold"> Enseignant</th>
+                      <th className="pb-3 font-semibold"> Statut</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -230,28 +272,12 @@ export default function StudentDashboard() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3">
-                          <button 
-                            type="button" 
-                            className="px-3 py-1.5 rounded-lg border border-white/30 hover:bg-white/10 transition text-xs flex items-center gap-1"
-                            onClick={() => alert(
-                              `📋 Détails de la séance:\n\n` +
-                              `📚 Matière: ${seance.matiere}\n` +
-                              `📅 Date: ${formatDate(seance.date)}\n` +
-                              `⏰ Horaire: ${seance.time}\n` +
-                              `👨‍🏫 Enseignant: ${getEnseignantName(seance.enseignant)}\n` +
-                              `✅ Statut: ${seance.status === "Présent" || seance.status === "Present" ? "Présent" : "Absent"}`
-                            )}
-                          >
-                            <span>📖</span> Détails
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
+
               {/* Résumé */}
               <div className="mt-6 pt-4 border-t border-white/10">
                 <div className="flex justify-between items-center text-sm text-gray-300">
@@ -263,7 +289,7 @@ export default function StudentDashboard() {
               </div>
             </>
           )}
-          
+
           <div className="mt-6 flex gap-3">
             <Link
               href="/"
