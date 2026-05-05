@@ -1,13 +1,15 @@
 "use client";
 
 import { db } from "@/filebase";
-import { collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { MultiSelect } from "@/compoenents/MultiSelect";
 
 type UserRow = {
     id: string;
     username: string;
+    role: string;
 };
 
 type SeanceRow = {
@@ -25,17 +27,29 @@ type PageMessage = {
     text: string;
 };
 
+type SelectedUser = {
+    id: string;
+    username: string;
+    email?: string;
+};
+
 export default function SeanceTable() {
-                const [originalSeances, setOriginalSeances] = useState<SeanceRow[]>([]);
-            // Pour la sélection multiple à supprimer
-            const [selectedToRemove, setSelectedToRemove] = useState<Record<string, string[]>>({});
-        const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+    const [originalSeances, setOriginalSeances] = useState<SeanceRow[]>([]);
+    // Pour la sélection multiple à supprimer
+    const [selectedToRemove, setSelectedToRemove] = useState<Record<string, string[]>>({});
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [seances, setSeances] = useState<SeanceRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState<UserRow[]>([]);
     const [isSavingById, setIsSavingById] = useState<Record<string, boolean>>({});
     const [isDeletingById, setIsDeletingById] = useState<Record<string, boolean>>({});
     const [message, setMessage] = useState<PageMessage | null>(null);
+
+    // --- Drawer States ---
+    const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const [responsable, setResponsable] = useState<SelectedUser[]>([]);
+    const [participants, setParticipants] = useState<SelectedUser[]>([]);
 
     useEffect(() => {
         if (!message) return;
@@ -48,10 +62,11 @@ export default function SeanceTable() {
             try {
                 const usersSnapshot = await getDocs(collection(db, "users"));
                 const usersData = usersSnapshot.docs.map((userDoc) => {
-                    const data = userDoc.data() as { username?: string };
+                    const data = userDoc.data() as { username?: string; role?: string };
                     return {
                         id: userDoc.id,
                         username: data.username || "-",
+                        role: data.role || "",
                     };
                 });
                 setUsers(usersData);
@@ -184,7 +199,7 @@ export default function SeanceTable() {
 
         const [startHour, startMinute] = seance.heure_de_debut.split(":").map(Number);
         const [endHour, endMinute] = seance.heure_de_fin.split(":").map(Number);
-        
+
         if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
             setMessage({ type: "error", text: "L'heure de fin doit être après l'heure de début" });
             return;
@@ -192,10 +207,10 @@ export default function SeanceTable() {
 
         try {
             setIsSavingById((prev) => ({ ...prev, [seance.id]: true }));
-            
+
             // Extraire l'ID du responsable pour la sauvegarde
             const responsableId = getResponsableId(seance.responsable);
-            
+
             await updateDoc(doc(db, "seance", seance.id), {
                 seanceName: seance.seanceName,
                 date: seance.date,
@@ -230,18 +245,95 @@ export default function SeanceTable() {
         }
     };
 
+    // --- Ajout de séance (Drawer) ---
+    const teacherUsers = users.filter((u) => ["enseignant", "teacher"].includes(u.role.trim().toLowerCase()));
+    const studentUsers = users.filter((u) => ["etudiant", "student"].includes(u.role.trim().toLowerCase()));
+
+    const todayLocal = new Date();
+    const minDate = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth() + 1).padStart(2, "0")}-${String(todayLocal.getDate()).padStart(2, "0")}`;
+
+    const handleAddSeance = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (isAdding) return;
+
+        setIsAdding(true);
+        setMessage(null);
+
+        const form = e.currentTarget;
+        const name = (form.elements.namedItem("nomseance") as HTMLInputElement)?.value;
+        const date = (form.elements.namedItem("date") as HTMLInputElement)?.value;
+        const heurededebut = (form.elements.namedItem("heurededebut") as HTMLInputElement)?.value;
+        const heuredefin = (form.elements.namedItem("heuredefin") as HTMLInputElement)?.value;
+        const responsableValue = responsable[0]?.id;
+        const participantsValues = participants.map((p) => p.id);
+
+        try {
+            if (!name || !date || !heurededebut || !heuredefin || !responsableValue || participantsValues.length === 0) {
+                setMessage({ type: "error", text: "Veuillez remplir tous les champs du formulaire d'ajout." });
+                setIsAdding(false);
+                return;
+            }
+
+            const selectedDate = new Date(`${date}T00:00:00`);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate < today) {
+                setMessage({ type: "error", text: "La date ne peut pas être dans le passé." });
+                setIsAdding(false);
+                return;
+            }
+
+            const newSeanceRef = await addDoc(collection(db, "seance"), {
+                seanceName: name,
+                date: date,
+                heure_de_debut: heurededebut,
+                heure_de_fin: heuredefin,
+                responsable: responsableValue,
+                participants: participantsValues,
+                createdAt: new Date(),
+            });
+
+            // Add locally to the state
+            const newSeance: SeanceRow = {
+                id: newSeanceRef.id,
+                seanceName: name,
+                date: date,
+                heure_de_debut: heurededebut,
+                heure_de_fin: heuredefin,
+                responsable: responsableValue,
+                participants: participantsValues,
+            };
+
+            setSeances([newSeance, ...seances]);
+            setOriginalSeances([newSeance, ...originalSeances]);
+
+            setMessage({ type: "success", text: "Séance ajoutée avec succès" });
+            form.reset();
+            setResponsable([]);
+            setParticipants([]);
+            setIsAddDrawerOpen(false);
+
+        } catch (error: any) {
+            console.error(error);
+            setMessage({ type: "error", text: error.message || "Erreur lors de l'ajout" });
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
     return (
         <div className="min-h-screen p-6 md:p-10 text-white bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
             <div className="max-w-6xl mx-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
                 <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
                     <h1 className="text-2xl md:text-3xl font-bold">Liste des séances</h1>
                     <div className="flex items-center gap-3">
-                        <Link
-                            href="/admin/ajouter-seance"
+                        <button
+                            onClick={() => setIsAddDrawerOpen(true)}
                             className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
                         >
                             Ajouter séance
-                        </Link>
+                        </button>
                         <Link
                             href="/admin"
                             className="px-4 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
@@ -252,11 +344,10 @@ export default function SeanceTable() {
                 </div>
 
                 {message && (
-                    <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-                        message.type === "success"
+                    <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.type === "success"
                             ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
                             : "border-red-500/40 bg-red-500/10 text-red-300"
-                    }`}>
+                        }`}>
                         {message.text}
                     </div>
                 )}
@@ -412,6 +503,81 @@ export default function SeanceTable() {
                         </table>
                     </div>
                 )}
+            </div>
+
+            {/* --- Drawer Overlay --- */}
+            {isAddDrawerOpen && (
+                <div
+                    className="fixed inset-0 bg-[#020617]/60 backdrop-blur-[2px] z-40 transition-opacity"
+                    onClick={() => setIsAddDrawerOpen(false)}
+                />
+            )}
+
+            {/* --- Drawer Content --- */}
+            <div className={`fixed top-0 right-0 h-full w-full md:max-w-xl bg-[#111827] border-l border-gray-700 shadow-2xl z-50 transform transition-transform duration-300 overflow-y-auto p-6 md:p-8 ${isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-semibold text-white">Ajouter une séance</h2>
+                    <button
+                        type="button"
+                        onClick={() => setIsAddDrawerOpen(false)}
+                        className="text-gray-400 hover:text-white transition-colors text-2xl"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <form onSubmit={handleAddSeance}>
+                    <input
+                        name="nomseance"
+                        placeholder="Nom de la séance"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                    />
+
+                    <input
+                        type="date"
+                        name="date"
+                        min={minDate}
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                    />
+
+                    <input
+                        type="time"
+                        name="heurededebut"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                    />
+
+                    <input
+                        type="time"
+                        name="heuredefin"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                    />
+
+                    <div className="mb-4 text-white">
+                        <MultiSelect
+                            options={teacherUsers}
+                            selected={responsable}
+                            onChange={(val) => setResponsable(val.length > 0 ? [val[val.length - 1]] : [])}
+                            placeholder="Sélectionner un responsable"
+                        />
+                    </div>
+
+                    <div className="mb-4 text-white">
+                        <MultiSelect
+                            options={studentUsers}
+                            selected={participants}
+                            onChange={setParticipants}
+                            placeholder="Sélectionner les participants"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isAdding}
+                        className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isAdding ? "Ajout en cours..." : "Ajouter séance"}
+                    </button>
+                </form>
             </div>
         </div>
     );

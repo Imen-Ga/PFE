@@ -1,7 +1,8 @@
 "use client";
 
-import { db } from "@/filebase";
-import { collection, getDocs } from "firebase/firestore";
+import { auth, db } from "@/filebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -37,6 +38,11 @@ export default function UsersTablePage() {
     const [isSavingById, setIsSavingById] = useState<Record<string, boolean>>({});
     const [isDeletingById, setIsDeletingById] = useState<Record<string, boolean>>({});
     const [message, setMessage] = useState<PageMessage | null>(null);
+
+    // --- Drawer States ---
+    const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const [role, setRole] = useState("Etudiant");
 
     useEffect(() => {
         if (!message) return;
@@ -195,18 +201,76 @@ export default function UsersTablePage() {
         }
     };
 
+    // --- Ajout d'utilisateur (Drawer) ---
+    const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (isAdding) return;
+        setIsAdding(true);
+        setMessage(null);
+
+        const form = e.currentTarget;
+        const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
+        const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
+        const username = (form.elements.namedItem("username") as HTMLInputElement)?.value;
+        const birthdate = (form.elements.namedItem("birthdate") as HTMLInputElement)?.value;
+        const phoneNbr = (form.elements.namedItem("phoneNbr") as HTMLInputElement)?.value;
+
+        if (!email || !password || !role || !username || !birthdate || !phoneNbr) {
+            setMessage({ type: "error", text: "Veuillez remplir tous les champs" });
+            setIsAdding(false);
+            return;
+        }
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            await setDoc(doc(db, "users", user.uid), {
+                username,
+                birthDate: birthdate,
+                role: role,
+                phoneNbr,
+                createdAt: new Date(),
+                ...(role === "Enseignant" ? { studentIds: [] } : {}),
+            });
+
+            // Ajouter localement
+            const newUser: UserRow = {
+                id: user.uid,
+                email,
+                username,
+                role,
+                phoneNbr,
+                birthDate: birthdate,
+                password,
+            };
+
+            setUsers([newUser, ...users]);
+            setOriginalUsers([newUser, ...originalUsers]);
+
+            setMessage({ type: "success", text: "Utilisateur ajouté avec succès" });
+            form.reset();
+            setIsAddDrawerOpen(false);
+        } catch (error: any) {
+            console.error(error);
+            setMessage({ type: "error", text: error.message || "Erreur lors de l'ajout" });
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
     return (
         <div className="min-h-screen p-6 md:p-10 text-white bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
             <div className="max-w-6xl mx-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
                 <div className="flex items-center justify-between gap-4 mb-6">
                     <h1 className="text-2xl md:text-3xl font-bold">Tableau des utilisateurs</h1>
                     <div className="flex items-center gap-3">
-                        <Link
-                            href="/admin/ajouter-utilisateur"
+                        <button
+                            onClick={() => setIsAddDrawerOpen(true)}
                             className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-400 to-cyan-500 hover:opacity-90 transition"
                         >
                             Ajouter utilisateur
-                        </Link>
+                        </button>
                         <Link
                             href="/admin"
                             className="px-4 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
@@ -327,7 +391,81 @@ export default function UsersTablePage() {
                         </table>
                     </div>
                 )}
-                {/* <AddUserComponent /> */}
+            </div>
+
+            {/* --- Drawer Overlay --- */}
+            {isAddDrawerOpen && (
+                <div 
+                    className="fixed inset-0 bg-[#020617]/60 backdrop-blur-[2px] z-40 transition-opacity"
+                    onClick={() => setIsAddDrawerOpen(false)}
+                />
+            )}
+
+            {/* --- Drawer Content --- */}
+            <div className={`fixed top-0 right-0 h-full w-full md:max-w-xl bg-[#111827] border-l border-gray-700 shadow-2xl z-50 transform transition-transform duration-300 overflow-y-auto p-6 md:p-8 ${isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 className="text-2xl font-semibold text-white">Ajouter un utilisateur</h2>
+                        <p className="text-gray-400 text-sm mt-1">Remplissez les informations du nouveau compte</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsAddDrawerOpen(false)}
+                        className="text-gray-400 hover:text-white transition-colors text-2xl"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <form onSubmit={handleAddUser}>
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="exemple@email.com"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                    />
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="Mot de passe"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                    />
+                    <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        name="role"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                    >
+                        <option value="Etudiant">Etudiant</option>
+                        <option value="Enseignant">Enseignant</option>
+                    </select>
+                    <input
+                        type="text"
+                        name="username"
+                        placeholder="Nom complet"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                    />
+                    <input
+                        type="text"
+                        name="birthdate"
+                        placeholder="JJ-MM-AAAA ou JJ/MM/AAAA"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                    />
+                    <input
+                        type="tel"
+                        name="phoneNbr"
+                        placeholder="Numéro de téléphone"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                    />
+
+                    <button
+                        type="submit"
+                        disabled={isAdding}
+                        className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isAdding ? "Ajout en cours..." : "Ajouter utilisateur"}
+                    </button>
+                </form>
             </div>
         </div>
     );
