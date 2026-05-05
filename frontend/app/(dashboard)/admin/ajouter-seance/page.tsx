@@ -175,14 +175,14 @@ export default function AjouterSeance() {
                             className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400"
                         />
 
-                        <div className="mb-4">
-                            <MultiSelect
-                                options={teacherUsers}
-                                selected={responsable}
-                                onChange={setResponsable}
-                                placeholder="Sélectionner un responsable"
-                            />
-                        </div>
+                                                <div className="mb-4">
+                                                    <MultiSelect
+                                                        options={teacherUsers}
+                                                        selected={responsable}
+                                                        onChange={(val) => setResponsable(val.length > 0 ? [val[val.length - 1]] : [])}
+                                                        placeholder="Sélectionner un responsable"
+                                                    />
+                                                </div>
 
                         <div className="mb-4">
                             <MultiSelect

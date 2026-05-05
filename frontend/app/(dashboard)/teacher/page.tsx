@@ -81,91 +81,145 @@ export default function TeacherDashboard() {
   }, []);
 
   if (loading) {
-    return <div className="text-white p-6">Chargement...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite] text-cyan-400"></div>
+          <p className="mt-4 text-gray-300">Chargement de votre tableau de bord...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 text-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
 
-        <h1 className="text-2xl font-bold">Interface Enseignant</h1>
+        {/* Header with gradient */}
+        <div className="bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl p-6 border border-cyan-500/20 backdrop-blur-sm">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            Tableau de bord enseignant
+          </h1>
+          <p className="text-gray-400 mt-2">Gérez vos séances et suivez la présence</p>
+        </div>
 
         {seances.length === 0 && (
-          <p className="text-gray-400">Aucune séance trouvée</p>
+          <div className="bg-slate-800/50 rounded-xl p-8 text-center border border-slate-700">
+            <div className="text-6xl mb-4">📚</div>
+            <p className="text-gray-400 text-lg">Aucune séance trouvée</p>
+            <p className="text-gray-500 text-sm mt-2">Vous n'êtes responsable d'aucune séance pour le moment</p>
+          </div>
         )}
 
-        {/* ✅ LISTE DÉROULANTE */}
+        {/* ✅ LISTE DÉROULANTE - Enhanced */}
         {seances.length > 0 && (
-          <select
-            value={selectedSeance}
-            onChange={(e) => setSelectedSeance(e.target.value)}
-            className="bg-slate-800 p-2 rounded-lg"
-          >
-            {seances.map((s) => (
-              <option key={s.id} value={s.id}>
-                {safe(s.seanceName)} - {safe(s.date)}
-              </option>
-            ))}
-          </select>
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 backdrop-blur-sm">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              📖 Sélectionner une séance
+            </label>
+            <select
+              value={selectedSeance}
+              onChange={(e) => setSelectedSeance(e.target.value)}
+              className="w-full md:w-auto min-w-[300px] bg-slate-900 text-white p-3 rounded-lg border border-slate-600 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-200 cursor-pointer hover:bg-slate-800"
+            >
+              {seances.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {safe(s.seanceName)} • {safe(s.date)}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
-        {/* ✅ AFFICHER SEULEMENT LA SÉANCE CHOISIE */}
+        {/* ✅ AFFICHER SEULEMENT LA SÉANCE CHOISIE - Enhanced */}
         {seances
           .filter((s) => s.id === selectedSeance)
           .map((s) => (
-            <div key={s.id} className="bg-slate-800 p-4 rounded-xl space-y-4">
-
-              {/* INFOS */}
-              <div>
-                <h2 className="font-semibold text-lg">
-                  {safe(s.seanceName)}
-                </h2>
-
-                <p className="text-sm text-gray-400">
-                  {safe(s.date)} | {safe(s.heure_de_debut)} - {safe(s.heure_de_fin)}
-                </p>
+            <div key={s.id} className="bg-slate-800/50 rounded-xl border border-slate-700 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-cyan-500/50">
+              
+              {/* Header with gradient accent */}
+              <div className="bg-gradient-to-r from-cyan-500/20 via-transparent to-transparent p-6 border-b border-slate-700">
+                <div className="flex items-start justify-between flex-wrap gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-cyan-300">
+                      {safe(s.seanceName)}
+                    </h2>
+                    <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-400">
+                      <span className="flex items-center gap-1">
+                         {safe(s.date)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                         {safe(s.heure_de_debut)} → {safe(s.heure_de_fin)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Badge responsable */}
+                  <div className="bg-cyan-500/10 px-4 py-2 rounded-full border border-cyan-500/30">
+                    <span className="text-cyan-300 text-sm font-medium">
+                       Responsable : {safe(s.responsable)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* RESPONSABLE */}
-              <p className="text-cyan-300">
-                Responsable : {safe(s.responsable)}
-              </p>
-
-              {/* PARTICIPANTS */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-gray-400">
-                    <tr>
-                      <th className="text-left">Etudiant</th>
-                      <th>Statut</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {s.participants.map((p, i) => (
-                      <tr key={i} className="border-t border-slate-700">
-                        <td className="py-2">{safe(p)}</td>
-                        <td>
-                          <span className="px-2 py-1 bg-red-600 rounded text-xs">
-                            Absent
-                          </span>
-                        </td>
+              {/* PARTICIPANTS Table - Enhanced */}
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-200">
+                    📋 Liste des participants
+                  </h3>
+                  <span className="text-sm text-gray-400 bg-slate-700 px-3 py-1 rounded-full">
+                    {s.participants.length} étudiant{s.participants.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                
+                <div className="overflow-x-auto rounded-lg border border-slate-700">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-900">
+                      <tr className="text-gray-300 border-b border-slate-700">
+                        <th className="text-left p-4 font-semibold">👤 Étudiant</th>
+                        <th className="text-center p-4 font-semibold w-32">📊 Statut</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
 
+                    <tbody>
+                      {s.participants.length === 0 ? (
+                        <tr>
+                          <td colSpan={2} className="text-center p-8 text-gray-500">
+                            Aucun participant inscrit
+                          </td>
+                        </tr>
+                      ) : (
+                        s.participants.map((p, i) => (
+                          <tr key={i} className="border-t border-slate-700/50 hover:bg-slate-700/30 transition-colors duration-150">
+                            <td className="py-3 px-4 text-gray-200 font-medium">
+                              {safe(p)}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-lg text-red-300 text-xs font-semibold border border-red-500/30">
+                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                Absent
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           ))}
 
-        {/* RETOUR */}
-        <div className="mt-6">
+        {/* RETOUR - Enhanced */}
+        <div className="mt-8 pt-4 border-t border-slate-700">
           <Link
             href="/auth/login"
-            className="inline-block px-5 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 hover:border-cyan-300 transition-all duration-200 font-medium group"
           >
-            Retour accueil
+            <span>←</span>
+            Retour à l'accueil
           </Link>
         </div>
 
