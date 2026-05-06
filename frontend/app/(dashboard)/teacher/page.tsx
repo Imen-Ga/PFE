@@ -239,7 +239,7 @@ export default function TeacherDashboard() {
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 hover:border-cyan-300 transition-all duration-200 font-medium group"
           >
             <span>←</span>
-            Retour à l'accueil
+            ← Déconnexion
           </Link>
         </div>
 
