@@ -20,6 +20,7 @@ export default function StudentDashboard() {
   const [seances, setSeances] = useState<Seance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const currentUser = useSelector((state: any) => state.auth.userInfo);
   const dispatch = useDispatch();
 
@@ -136,7 +137,7 @@ export default function StudentDashboard() {
     };
 
     fetchSeances();
-  }, [currentUser]);
+  }, [currentUser, refreshKey]);
 
   // Statistiques dynamiques
   const total = seances.length;
@@ -208,10 +209,7 @@ export default function StudentDashboard() {
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
             <h2 className="text-xl font-semibold">📋 Historique de présence</h2>
             <button
-              onClick={() => {
-                setLoading(true);
-                fetchSeances();
-              }}
+              onClick={() => setRefreshKey(prev => prev + 1)}
               className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm"
             >
               🔄 Actualiser

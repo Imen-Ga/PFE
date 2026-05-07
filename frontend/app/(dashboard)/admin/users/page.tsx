@@ -204,61 +204,57 @@ export default function UsersTablePage() {
     // --- Ajout d'utilisateur (Drawer) ---
     const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (isAdding) return;
-        setIsAdding(true);
-        setMessage(null);
+        setIsAdding(true); // ← you have this state but never set it to true
 
         const form = e.currentTarget;
-        const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
-        const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
-        const username = (form.elements.namedItem("username") as HTMLInputElement)?.value;
-        const birthdate = (form.elements.namedItem("birthdate") as HTMLInputElement)?.value;
-        const phoneNbr = (form.elements.namedItem("phoneNbr") as HTMLInputElement)?.value;
-
-        if (!email || !password || !role || !username || !birthdate || !phoneNbr) {
-            setMessage({ type: "error", text: "Veuillez remplir tous les champs" });
-            setIsAdding(false);
-            return;
-        }
+        const formData = new FormData(form);
 
         try {
+            const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            // This is what was crashing — response wasn't JSON
+            if (!uploadRes.ok) {
+                const text = await uploadRes.text();
+                throw new Error(`Upload failed: ${text}`);
+            }
+
+            const uploadData = await uploadRes.json();
+            const imageUrl = uploadData.filePath;
+
+            const email = formData.get("email") as string;
+            const password = formData.get("password") as string;
+            const username = formData.get("username") as string;
+            const birthdate = formData.get("birthdate") as string;
+            const phoneNbr = formData.get("phoneNbr") as string;
+
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
             await setDoc(doc(db, "users", user.uid), {
                 username,
                 birthDate: birthdate,
-                role: role,
-                phoneNbr,
-                createdAt: new Date(),
-                ...(role === "Enseignant" ? { studentIds: [] } : {}),
-            });
-
-            // Ajouter localement
-            const newUser: UserRow = {
-                id: user.uid,
-                email,
-                username,
                 role,
                 phoneNbr,
-                birthDate: birthdate,
-                password,
-            };
-
-            setUsers([newUser, ...users]);
-            setOriginalUsers([newUser, ...originalUsers]);
+                image: imageUrl,
+            });
 
             setMessage({ type: "success", text: "Utilisateur ajouté avec succès" });
-            form.reset();
             setIsAddDrawerOpen(false);
-        } catch (error: any) {
+            form.reset();
+
+        } catch (error) {
             console.error(error);
-            setMessage({ type: "error", text: error.message || "Erreur lors de l'ajout" });
+            setMessage({
+                type: "error",
+                text: getErrorMessage(error, "Erreur lors de l'ajout de l'utilisateur"),
+            });
         } finally {
             setIsAdding(false);
         }
     };
-
     return (
         <div className="min-h-screen p-6 md:p-10 text-white bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
             <div className="max-w-6xl mx-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
@@ -282,11 +278,10 @@ export default function UsersTablePage() {
 
                 {message && (
                     <div
-                        className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-                            message.type === "success"
-                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                                : "border-red-500/40 bg-red-500/10 text-red-300"
-                        }`}
+                        className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.type === "success"
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                            : "border-red-500/40 bg-red-500/10 text-red-300"
+                            }`}
                     >
                         {message.text}
                     </div>
@@ -357,32 +352,32 @@ export default function UsersTablePage() {
                                         </td>
                                         <td className="py-3 pr-4">
                                             <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleSaveUser(user)}
-                                                disabled={!!isSavingById[user.id] || !isUserModified(user)}
-                                                className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                                                title="Enregistrer"
-                                            >
-                                                {isSavingById[user.id] ? (
-                                                    <span className="text-xs">...</span>
-                                                ) : (
-                                                    <span role="img" aria-label="save">💾</span>
-                                                )}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteUser(user)}
-                                                disabled={!!isDeletingById[user.id]}
-                                                className="p-2 rounded-lg bg-red-700 hover:bg-red-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                                                title="Supprimer"
-                                            >
-                                                {isDeletingById[user.id] ? (
-                                                    <span className="text-xs">...</span>
-                                                ) : (
-                                                    <span role="img" aria-label="delete">🗑️</span>
-                                                )}
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSaveUser(user)}
+                                                    disabled={!!isSavingById[user.id] || !isUserModified(user)}
+                                                    className="p-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    title="Enregistrer"
+                                                >
+                                                    {isSavingById[user.id] ? (
+                                                        <span className="text-xs">...</span>
+                                                    ) : (
+                                                        <span role="img" aria-label="save">💾</span>
+                                                    )}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteUser(user)}
+                                                    disabled={!!isDeletingById[user.id]}
+                                                    className="p-2 rounded-lg bg-red-700 hover:bg-red-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    title="Supprimer"
+                                                >
+                                                    {isDeletingById[user.id] ? (
+                                                        <span className="text-xs">...</span>
+                                                    ) : (
+                                                        <span role="img" aria-label="delete">🗑️</span>
+                                                    )}
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -395,7 +390,7 @@ export default function UsersTablePage() {
 
             {/* --- Drawer Overlay --- */}
             {isAddDrawerOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-[#020617]/60 backdrop-blur-[2px] z-40 transition-opacity"
                     onClick={() => setIsAddDrawerOpen(false)}
                 />
@@ -457,7 +452,12 @@ export default function UsersTablePage() {
                         placeholder="Numéro de téléphone"
                         className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
                     />
-
+                    <input
+                        type="file"
+                        name="image"
+                        accept="image/*"
+                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg"
+                    />
                     <button
                         type="submit"
                         disabled={isAdding}

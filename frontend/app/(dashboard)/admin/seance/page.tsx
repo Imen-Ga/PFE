@@ -4,7 +4,7 @@ import { db } from "@/filebase";
 import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MultiSelect } from "@/compoenents/MultiSelect";
+import { MultiSelect } from "@/components/MultiSelect";
 
 type UserRow = {
     id: string;

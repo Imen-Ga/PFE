@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  images: {
+    // Allow any path under /public (Next.js default)
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;

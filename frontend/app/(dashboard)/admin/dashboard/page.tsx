@@ -5,34 +5,33 @@ import { Chart, registerables } from "chart.js";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { getInitials } from "@/utils/functions";
-import { MONTHS, TODAY } from "@/constant";
-import { useChart } from "@/hooks/useAppChart";
 import IconDoc from "@/components/icons/IconDoc";
 import IconCheck from "@/components/icons/IconCheck";
 import IconClock from "@/components/icons/IconClock";
 import { IconX } from "@/components/icons/IconX";
-import { LegendDot } from "@/components/LegendDot";
+import { useChart } from "@/hooks/useAppChart";
 import KpiCard from "@/components/KpiCard";
+import { LegendDot } from "@/components/LegendDots";
 
 Chart.register(...registerables);
 
 export default function DashboardPage() {
-  const users = useSelector((state: RootState) => state.users.users);  
+  const users = useSelector((state: RootState) => state.users.users);
   const docs = useSelector((state: RootState) => state.docs.docs).filter((item: any) => item.status.toLowerCase() !== "draft");
-  const MAX_DOCS = useMemo(()=>{
+  const MAX_DOCS = useMemo(() => {
     return Math.max(...users.map((d) => d.docs.length));
-  },[users])
-  const docsStats = useMemo(()=>{
-      const total = docs.length || 1;
-      const docsApproved = docs?.filter((item: any) => item.status === "approve");
-      const docsRejected = docs?.filter((item: any) => item.status === "rejected");
-      const docsPending = docs?.filter((item: any) => item.status === "pending");
-      return {total, docsApproved, docsRejected, docsPending}
-  },[docs])
-  
+  }, [users])
+  const docsStats = useMemo(() => {
+    const total = docs.length || 1;
+    const docsApproved = docs?.filter((item: any) => item.status === "approve");
+    const docsRejected = docs?.filter((item: any) => item.status === "rejected");
+    const docsPending = docs?.filter((item: any) => item.status === "pending");
+    return { total, docsApproved, docsRejected, docsPending }
+  }, [docs])
+
   const donutRef = useRef<HTMLCanvasElement>(null);
-  const barRef   = useRef<HTMLCanvasElement>(null);
-  const lineRef  = useRef<HTMLCanvasElement>(null);
+  const barRef = useRef<HTMLCanvasElement>(null);
+  const lineRef = useRef<HTMLCanvasElement>(null);
 
   const textColor = "rgba(115,115,115,0.9)";
   const gridColor = "rgba(0,0,0,0.06)";
@@ -41,14 +40,14 @@ export default function DashboardPage() {
     const approved = Array(12).fill(0);
 
     docs.forEach((doc) => {
-        const date = new Date(doc.submissionDate);
-        const month = date.getMonth();
+      const date = new Date(doc.submissionDate);
+      const month = date.getMonth();
 
-        submissions[month]++;
+      submissions[month]++;
 
-        if (doc.status === "approve") {
+      if (doc.status === "approve") {
         approved[month]++;
-        }
+      }
     });
 
     return { submissions, approved };
@@ -268,7 +267,7 @@ export default function DashboardPage() {
                 <span className="text-sm font-semibold text-neutral-800 shrink-0">{dev.docs.length}</span>
               </div>
             ))}
-           
+
           </div>
         </div>
       </div>
