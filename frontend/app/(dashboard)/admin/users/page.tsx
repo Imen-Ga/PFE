@@ -43,6 +43,7 @@ export default function UsersTablePage() {
     const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [role, setRole] = useState("Etudiant");
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         if (!message) return;
@@ -54,53 +55,55 @@ export default function UsersTablePage() {
         return () => window.clearTimeout(timeoutId);
     }, [message]);
 
+    // Extrait la fonction de chargement pour pouvoir la réutiliser
+    const loadUsers = async () => {
+        try {
+            // 1. Charger les utilisateurs Firestore
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            const usersData = usersSnapshot.docs.map((userDoc) => {
+                const data = userDoc.data() as {
+                    username?: string;
+                    role?: string;
+                    phoneNbr?: string;
+                    birthDate?: string;
+                    password?: string;
+                };
+                return {
+                    id: userDoc.id,
+                    username: data.username || "-",
+                    role: data.role || "-",
+                    phoneNbr: data.phoneNbr || "-",
+                    birthDate: data.birthDate || "-",
+                    password: data.password || "-",
+                    email: "-", // sera fusionné ensuite
+                };
+            });
+
+            // 2. Charger les emails depuis Authentication
+            const authRes = await fetch("/api/list-auth-users");
+            const authData = await authRes.json();
+            const authUsers: { uid: string; email: string | null }[] = authData.users || [];
+
+            // 3. Fusionner les emails dans les users Firestore (par id/uid)
+            const mergedUsers = usersData.map((user) => {
+                const authUser = authUsers.find((au) => au.uid === user.id);
+                return {
+                    ...user,
+                    email: authUser?.email || user.email,
+                };
+            });
+
+            setUsers(mergedUsers);
+            setOriginalUsers(mergedUsers);
+        } catch (error) {
+            console.error(error);
+            setMessage({ type: "error", text: "Erreur lors du chargement des utilisateurs" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const loadUsers = async () => {
-            try {
-                // 1. Charger les utilisateurs Firestore
-                const usersSnapshot = await getDocs(collection(db, "users"));
-                const usersData = usersSnapshot.docs.map((userDoc) => {
-                    const data = userDoc.data() as {
-                        username?: string;
-                        role?: string;
-                        phoneNbr?: string;
-                        birthDate?: string;
-                        password?: string;
-                    };
-                    return {
-                        id: userDoc.id,
-                        username: data.username || "-",
-                        role: data.role || "-",
-                        phoneNbr: data.phoneNbr || "-",
-                        birthDate: data.birthDate || "-",
-                        password: data.password || "-",
-                        email: "-", // sera fusionné ensuite
-                    };
-                });
-
-                // 2. Charger les emails depuis Authentication
-                const authRes = await fetch("/api/list-auth-users");
-                const authData = await authRes.json();
-                const authUsers: { uid: string; email: string | null }[] = authData.users || [];
-
-                // 3. Fusionner les emails dans les users Firestore (par id/uid)
-                const mergedUsers = usersData.map((user) => {
-                    const authUser = authUsers.find((au) => au.uid === user.id);
-                    return {
-                        ...user,
-                        email: authUser?.email || user.email,
-                    };
-                });
-
-                setUsers(mergedUsers);
-                setOriginalUsers(mergedUsers);
-            } catch (error) {
-                console.error(error);
-                setMessage({ type: "error", text: "Erreur lors du chargement des utilisateurs" });
-            } finally {
-                setIsLoading(false);
-            }
-        };
         loadUsers();
     }, []);
 
@@ -204,10 +207,36 @@ export default function UsersTablePage() {
     // --- Ajout d'utilisateur (Drawer) ---
     const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsAdding(true); // ← you have this state but never set it to true
+        setIsAdding(true);
 
         const form = e.currentTarget;
         const formData = new FormData(form);
+
+        if (role === "Etudiant") {
+            const birthdateStr = formData.get("birthdate") as string;
+            if (birthdateStr) {
+                const birthDateObj = new Date(birthdateStr);
+                const today = new Date();
+                
+                if (birthDateObj > today) {
+                    setMessage({ type: "error", text: "La date de naissance ne peut pas être dans le futur." });
+                    setIsAdding(false);
+                    return;
+                }
+                
+                let age = today.getFullYear() - birthDateObj.getFullYear();
+                const m = today.getMonth() - birthDateObj.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+                    age--;
+                }
+                
+                if (age < 17) {
+                    setMessage({ type: "error", text: "L'étudiant doit avoir au moins 17 ans." });
+                    setIsAdding(false);
+                    return;
+                }
+            }
+        }
 
         try {
             const uploadRes = await fetch("/api/upload", {
@@ -215,7 +244,6 @@ export default function UsersTablePage() {
                 body: formData,
             });
 
-            // This is what was crashing — response wasn't JSON
             if (!uploadRes.ok) {
                 const text = await uploadRes.text();
                 throw new Error(`Upload failed: ${text}`);
@@ -235,15 +263,21 @@ export default function UsersTablePage() {
 
             await setDoc(doc(db, "users", user.uid), {
                 username,
+                email,
                 birthDate: birthdate,
                 role,
                 phoneNbr,
                 image: imageUrl,
+                status: "absent",
             });
+
+            // Recharger immédiatement la liste des utilisateurs
+            await loadUsers();
 
             setMessage({ type: "success", text: "Utilisateur ajouté avec succès" });
             setIsAddDrawerOpen(false);
             form.reset();
+            setShowPassword(false);
 
         } catch (error) {
             console.error(error);
@@ -255,6 +289,7 @@ export default function UsersTablePage() {
             setIsAdding(false);
         }
     };
+
     return (
         <div className="min-h-screen p-6 md:p-10 text-white bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
             <div className="max-w-6xl mx-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
@@ -267,12 +302,6 @@ export default function UsersTablePage() {
                         >
                             Ajouter utilisateur
                         </button>
-                        <Link
-                            href="/admin"
-                            className="px-4 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
-                        >
-                            ← Déconnexion
-                        </Link>
                     </div>
                 </div>
 
@@ -301,7 +330,6 @@ export default function UsersTablePage() {
                                     <th className="py-3 pr-4">Role</th>
                                     <th className="py-3 pr-4">Telephone</th>
                                     <th className="py-3 pr-4">Date naissance</th>
-                                    <th className="py-3 pr-4">Mot de passe</th>
                                     <th className="py-3 pr-4">Action</th>
                                 </tr>
                             </thead>
@@ -323,11 +351,15 @@ export default function UsersTablePage() {
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
-                                            <input
+                                            <select
                                                 value={user.role}
                                                 onChange={(e) => handleFieldChange(user.id, "role", e.target.value)}
-                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
-                                            />
+                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
+                                            >
+                                                <option value="Etudiant">Etudiant</option>
+                                                <option value="Enseignant">Enseignant</option>
+                                                <option value="Admin">Admin</option>
+                                            </select>
                                         </td>
                                         <td className="py-3 pr-4">
                                             <input
@@ -341,13 +373,6 @@ export default function UsersTablePage() {
                                                 value={user.birthDate}
                                                 onChange={(e) => handleFieldChange(user.id, "birthDate", e.target.value)}
                                                 className="w-36 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
-                                            />
-                                        </td>
-                                        <td className="py-3 pr-4">
-                                            <input
-                                                value={user.password}
-                                                onChange={(e) => handleFieldChange(user.id, "password", e.target.value)}
-                                                className="w-40 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none"
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
@@ -392,7 +417,10 @@ export default function UsersTablePage() {
             {isAddDrawerOpen && (
                 <div
                     className="fixed inset-0 bg-[#020617]/60 backdrop-blur-[2px] z-40 transition-opacity"
-                    onClick={() => setIsAddDrawerOpen(false)}
+                    onClick={() => {
+                        setIsAddDrawerOpen(false);
+                        setShowPassword(false);
+                    }}
                 />
             )}
 
@@ -401,67 +429,150 @@ export default function UsersTablePage() {
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h2 className="text-2xl font-semibold text-white">Ajouter un utilisateur</h2>
-                        <p className="text-gray-400 text-sm mt-1">Remplissez les informations du nouveau compte</p>
+                        <p className="text-gray-400 text-sm mt-1">Tous les champs sont obligatoires</p>
                     </div>
                     <button
                         type="button"
-                        onClick={() => setIsAddDrawerOpen(false)}
+                        onClick={() => {
+                            setIsAddDrawerOpen(false);
+                            setShowPassword(false);
+                        }}
                         className="text-gray-400 hover:text-white transition-colors text-2xl"
                     >
                         ✕
                     </button>
                 </div>
 
-                <form onSubmit={handleAddUser}>
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="exemple@email.com"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                    />
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Mot de passe"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                    />
-                    <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        name="role"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                    >
-                        <option value="Etudiant">Etudiant</option>
-                        <option value="Enseignant">Enseignant</option>
-                    </select>
-                    <input
-                        type="text"
-                        name="username"
-                        placeholder="Nom complet"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                    />
-                    <input
-                        type="text"
-                        name="birthdate"
-                        placeholder="JJ-MM-AAAA ou JJ/MM/AAAA"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                    />
-                    <input
-                        type="tel"
-                        name="phoneNbr"
-                        placeholder="Numéro de téléphone"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                    />
-                    <input
-                        type="file"
-                        name="image"
-                        accept="image/*"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg"
-                    />
+                <form onSubmit={handleAddUser} className="space-y-4">
+                    {/* Email */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Adresse email <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder="exemple@email.com"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
+
+                    {/* Mot de passe */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Mot de passe <span className="text-red-400">*</span>
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                placeholder="••••••••"
+                                className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white pr-12"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                            >
+                                {showPassword ? (
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                                        />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                        />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                        />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Rôle */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Rôle <span className="text-red-400">*</span>
+                        </label>
+                        <select
+                            value={role}
+                            onChange={(e) => setRole(e.target.value)}
+                            name="role"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                            required
+                        >
+                            <option value="Etudiant">Étudiant</option>
+                            <option value="Enseignant">Enseignant</option>
+                        </select>
+                    </div>
+
+                    {/* Nom complet */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Nom complet <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            name="username"
+                            placeholder="Jean Dupont"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
+
+                    {/* Date de naissance */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Date de naissance <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="datetime-local"
+                            name="birthdate"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
+
+                    {/* Téléphone */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Numéro de téléphone <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="tel"
+                            name="phoneNbr"
+                            placeholder="+33 6 12 34 56 78"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
+
+                    {/* Image */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Photo de profil <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="file"
+                            name="image"
+                            accept="image/*"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
+                            required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Formats acceptés : JPG, PNG, GIF (max 5MB)</p>
+                    </div>
+
                     <button
                         type="submit"
                         disabled={isAdding}
-                        className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
                         {isAdding ? "Ajout en cours..." : "Ajouter utilisateur"}
                     </button>

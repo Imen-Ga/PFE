@@ -19,6 +19,7 @@ type SeanceRow = {
   heure_de_fin: any;
   responsable: any;
   participants: any[];
+  presences?: any[];
 };
 
 export default function TeacherDashboard() {
@@ -77,6 +78,9 @@ export default function TeacherDashboard() {
               responsable: d.responsable,
               participants: Array.isArray(d.participants)
                 ? d.participants
+                : [],
+              precences: Array.isArray(d.presences)
+                ? d.presences
                 : [],
             };
           })
@@ -211,20 +215,40 @@ export default function TeacherDashboard() {
                           </td>
                         </tr>
                       ) : (
-                        s.participants.map((p, i) => (
-                          <tr key={i} className="border-t border-slate-700/50 hover:bg-slate-700/30 transition-colors duration-150">
-                            <td className="py-3 px-4 text-gray-200 font-medium">
-                              {getUserName(p)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-lg text-red-300 text-xs font-semibold border border-red-500/30">
-                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                Absent
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
+                        s.participants.map((p: any, i) => {
+
+                          const studentId =
+                            typeof p === "object" ? p.id : p;
+
+                          const presence =
+                            s.presences?.find(
+                              (pr: any) => pr.studentId === studentId
+                            );
+
+                          const status = presence?.status || "Absent";
+
+                          return (
+                            <tr key={i} className="border-t border-slate-700/50 hover:bg-slate-700/30 transition-colors duration-150">
+                              <td className="py-3 px-4 text-gray-200 font-medium">
+                                {getUserName(p)}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {status === "Présent" ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-600/20 rounded-lg text-green-300 text-xs font-semibold border border-green-500/30">
+                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                    Présent
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-lg text-red-300 text-xs font-semibold border border-red-500/30">
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                    Absent
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        }
+                        ))}
                     </tbody>
                   </table>
                 </div>

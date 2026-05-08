@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
     try {
         const data = await req.formData();
+        console.log("DATA:", data);
         const file = data.get("image") as File;
+        const email = data.get("email");
 
         if (!file || file.size === 0) {
             return Response.json({ error: "No file provided" }, { status: 400 });
@@ -17,14 +19,13 @@ export async function POST(req: Request) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const fileName = Date.now() + "-" + file.name;
-        const filePath = path.join("C:/pfe/images", fileName);
+        const filePath = path.join("C:/pfe/images", email + ".jpg");
 
         await writeFile(filePath, buffer);
 
         return Response.json({
             success: true,
-            filePath: `/images/${fileName}`,
+            filePath: `/images/${email}`,
         });
 
     } catch (error) {

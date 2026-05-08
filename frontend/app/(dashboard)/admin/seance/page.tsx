@@ -18,7 +18,7 @@ type SeanceRow = {
     date: string;
     heure_de_debut: string;
     heure_de_fin: string;
-    responsable: string | any; // Peut être string ou objet
+    responsable: string | any;
     participants: string[];
 };
 
@@ -35,7 +35,6 @@ type SelectedUser = {
 
 export default function SeanceTable() {
     const [originalSeances, setOriginalSeances] = useState<SeanceRow[]>([]);
-    // Pour la sélection multiple à supprimer
     const [selectedToRemove, setSelectedToRemove] = useState<Record<string, string[]>>({});
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [seances, setSeances] = useState<SeanceRow[]>([]);
@@ -104,20 +103,16 @@ export default function SeanceTable() {
         loadSeancesAndUsers();
     }, []);
 
-    // ✅ Fonction pour extraire le nom du responsable (string ou objet)
     const getResponsableDisplay = (responsable: string | any): string => {
-        // Si c'est un objet
         if (typeof responsable === 'object' && responsable !== null) {
             if (responsable.username) return responsable.username;
             if (responsable.id) return responsable.id;
             return "Responsable inconnu";
         }
-        // Si c'est un string (ID)
         const user = users.find((u) => u.id === responsable);
         return user ? user.username : responsable;
     };
 
-    // ✅ Fonction pour extraire l'ID du responsable (pour les mises à jour)
     const getResponsableId = (responsable: string | any): string => {
         if (typeof responsable === 'object' && responsable !== null) {
             return responsable.id || "";
@@ -135,11 +130,9 @@ export default function SeanceTable() {
         );
     };
 
-    // Vérifie si une séance a été modifiée
     const isSeanceModified = (seance: SeanceRow) => {
         const original = originalSeances.find((s) => s.id === seance.id);
         if (!original) return false;
-        // Comparer les champs simples
         if (
             seance.seanceName !== original.seanceName ||
             seance.date !== original.date ||
@@ -149,7 +142,6 @@ export default function SeanceTable() {
         ) {
             return true;
         }
-        // Comparer les participants (ordre et contenu)
         if (seance.participants.length !== original.participants.length) return true;
         for (let i = 0; i < seance.participants.length; i++) {
             if (seance.participants[i] !== original.participants[i]) return true;
@@ -157,9 +149,6 @@ export default function SeanceTable() {
         return false;
     };
 
-    // (Plus besoin de handleToggleParticipant, suppression uniquement)
-
-    // Pour cocher/décocher un participant à supprimer
     const handleToggleRemove = (seanceId: string, userId: string) => {
         setSelectedToRemove((prev) => {
             const current = prev[seanceId] || [];
@@ -171,7 +160,6 @@ export default function SeanceTable() {
         });
     };
 
-    // Pour retirer un ou plusieurs participants sélectionnés
     const handleRemoveSelected = (seanceId: string) => {
         setSeances((prev) =>
             prev.map((seance) =>
@@ -208,7 +196,6 @@ export default function SeanceTable() {
         try {
             setIsSavingById((prev) => ({ ...prev, [seance.id]: true }));
 
-            // Extraire l'ID du responsable pour la sauvegarde
             const responsableId = getResponsableId(seance.responsable);
 
             await updateDoc(doc(db, "seance", seance.id), {
@@ -245,7 +232,6 @@ export default function SeanceTable() {
         }
     };
 
-    // --- Ajout de séance (Drawer) ---
     const teacherUsers = users.filter((u) => ["enseignant", "teacher"].includes(u.role.trim().toLowerCase()));
     const studentUsers = users.filter((u) => ["etudiant", "student"].includes(u.role.trim().toLowerCase()));
 
@@ -294,7 +280,6 @@ export default function SeanceTable() {
                 createdAt: new Date(),
             });
 
-            // Add locally to the state
             const newSeance: SeanceRow = {
                 id: newSeanceRef.id,
                 seanceName: name,
@@ -334,12 +319,6 @@ export default function SeanceTable() {
                         >
                             Ajouter séance
                         </button>
-                        <Link
-                            href="/admin"
-                            className="px-4 py-2 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
-                        >
-                            ← Déconnexion
-                        </Link>
                     </div>
                 </div>
 
@@ -405,10 +384,18 @@ export default function SeanceTable() {
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
-                                            {/* ✅ Affichage sécurisé du responsable */}
-                                            <div className="p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg">
-                                                {getResponsableDisplay(seance.responsable)}
-                                            </div>
+                                            <select
+                                                value={getResponsableId(seance.responsable)}
+                                                onChange={(e) => handleFieldChange(seance.id, "responsable", e.target.value)}
+                                                className="w-48 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
+                                            >
+                                                <option value="" disabled>Sélectionner</option>
+                                                {teacherUsers.map(teacher => (
+                                                    <option key={teacher.id} value={teacher.id}>
+                                                        {teacher.username}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </td>
                                         <td className="py-3 pr-4">
                                             <div className="relative">
@@ -432,7 +419,6 @@ export default function SeanceTable() {
                                                             <div className="text-gray-400 p-2">Aucun participant</div>
                                                         ) : (
                                                             seance.participants.map((participant, idx) => {
-                                                                // Si participant est un objet, on tente d'en extraire un id/email, sinon on stringify
                                                                 let key = typeof participant === 'string' ? participant : (participant?.id || participant?.email || JSON.stringify(participant) + idx);
                                                                 let display = (() => {
                                                                     if (typeof participant === 'string') {
@@ -516,7 +502,10 @@ export default function SeanceTable() {
             {/* --- Drawer Content --- */}
             <div className={`fixed top-0 right-0 h-full w-full md:max-w-xl bg-[#111827] border-l border-gray-700 shadow-2xl z-50 transform transition-transform duration-300 overflow-y-auto p-6 md:p-8 ${isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-semibold text-white">Ajouter une séance</h2>
+                    <div>
+                        <h2 className="text-2xl font-semibold text-white">Ajouter une séance</h2>
+                        <p className="text-gray-400 text-sm mt-1">Tous les champs sont obligatoires</p>
+                    </div>
                     <button
                         type="button"
                         onClick={() => setIsAddDrawerOpen(false)}
@@ -526,54 +515,96 @@ export default function SeanceTable() {
                     </button>
                 </div>
 
-                <form onSubmit={handleAddSeance}>
-                    <input
-                        name="nomseance"
-                        placeholder="Nom de la séance"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
-                    />
+                <form onSubmit={handleAddSeance} className="space-y-4">
+                    {/* Nom de la séance */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Nom de la séance <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            name="nomseance"
+                            placeholder="Ex: Séance de physique"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
 
-                    <input
-                        type="date"
-                        name="date"
-                        min={minDate}
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
-                    />
+                    {/* Date */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Date <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="date"
+                            name="date"
+                            min={minDate}
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
 
-                    <input
-                        type="time"
-                        name="heurededebut"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
-                    />
+                    {/* Heure de début */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Heure de début <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="time"
+                            name="heurededebut"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
 
-                    <input
-                        type="time"
-                        name="heuredefin"
-                        className="w-full mb-4 p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
-                    />
+                    {/* Heure de fin */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Heure de fin <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="time"
+                            name="heuredefin"
+                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-400 text-white"
+                            required
+                        />
+                    </div>
 
-                    <div className="mb-4 text-white">
+                    {/* Responsable */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Responsable <span className="text-red-400">*</span>
+                        </label>
                         <MultiSelect
                             options={teacherUsers}
                             selected={responsable}
                             onChange={(val) => setResponsable(val.length > 0 ? [val[val.length - 1]] : [])}
                             placeholder="Sélectionner un responsable"
                         />
+                        {responsable.length === 0 && (
+                            <p className="text-xs text-red-400 mt-1">Veuillez sélectionner un responsable</p>
+                        )}
                     </div>
 
-                    <div className="mb-4 text-white">
+                    {/* Participants */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Participants <span className="text-red-400">*</span>
+                        </label>
                         <MultiSelect
                             options={studentUsers}
                             selected={participants}
                             onChange={setParticipants}
                             placeholder="Sélectionner les participants"
                         />
+                        {participants.length === 0 && (
+                            <p className="text-xs text-red-400 mt-1">Veuillez sélectionner au moins un participant</p>
+                        )}
                     </div>
 
                     <button
                         type="submit"
                         disabled={isAdding}
-                        className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
                         {isAdding ? "Ajout en cours..." : "Ajouter séance"}
                     </button>

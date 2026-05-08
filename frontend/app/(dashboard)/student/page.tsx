@@ -108,13 +108,26 @@ export default function StudentDashboard() {
               ? `${data.heure_de_debut} - ${data.heure_de_fin}`
               : data.heure_de_debut || data.time || "Horaire non défini";
 
+            // chercher statut étudiant
+            let studentStatus = "Absent";
+
+            if (Array.isArray(data.presences)) {
+              const presence = data.presences.find(
+                (p: any) => p.studentId === currentUser.uid
+              );
+
+              if (presence) {
+                studentStatus = presence.status || "Absent";
+              }
+            }
+
             fetchedSeances.push({
               id: doc.id,
               date: data.date || "Date non définie",
               time: timeStr,
               matiere: data.seanceName || data.matiere || data.session || "Sans titre",
               enseignant: responsableName,
-              status: "Absent", // Par défaut
+              status: studentStatus,
             });
           }
         });
