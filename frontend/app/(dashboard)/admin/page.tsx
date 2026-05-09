@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/filebase";
+import { Chart, registerables } from "chart.js";
+import { useChart } from "@/hooks/useAppChart";
+
+Chart.register(...registerables);
 
 export default function AdminDashboardHome() {
     const [stats, setStats] = useState({
@@ -10,18 +14,25 @@ export default function AdminDashboardHome() {
         students: 0,
         absencePercentage: "0",
     });
+
     const [loading, setLoading] = useState(true);
+
+    // refs charts
+    const usersChartRef = useRef<HTMLCanvasElement>(null);
+    const absenceChartRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                // 1. Fetch Users
+                // USERS
                 const usersSnap = await getDocs(collection(db, "users"));
                 let tCount = 0;
                 let sCount = 0;
+
                 usersSnap.docs.forEach(doc => {
                     const data = doc.data();
                     const role = (data.role || "").trim().toLowerCase();
+
                     if (["enseignant", "teacher"].includes(role)) {
                         tCount++;
                     } else if (["etudiant", "student"].includes(role)) {
@@ -29,20 +40,24 @@ export default function AdminDashboardHome() {
                     }
                 });
 
-                // 2. Fetch Seances to calculate absences
+                // SEANCES
                 const seancesSnap = await getDocs(collection(db, "seance"));
                 let totalExpected = 0;
                 let totalPresents = 0;
 
                 seancesSnap.docs.forEach(doc => {
                     const data = doc.data();
-                    const participants = Array.isArray(data.participants) ? data.participants : [];
-                    const presences = Array.isArray(data.presences) ? data.presences : [];
+                    const participants = data.participants || [];
+                    const presences = data.presences || [];
 
                     totalExpected += participants.length;
 
-                    const presentsForSeance = presences.filter((p: any) => p.status === "Présent" || p.status === "Present").length;
-                    totalPresents += presentsForSeance;
+                    const presents = presences.filter(
+                        (p: any) =>
+                            p.status === "Présent" || p.status === "Present"
+                    ).length;
+
+                    totalPresents += presents;
                 });
 
                 let absencePerc = 0;
@@ -56,8 +71,9 @@ export default function AdminDashboardHome() {
                     students: sCount,
                     absencePercentage: absencePerc.toFixed(1),
                 });
-            } catch (error) {
-                console.error("Failed to fetch stats", error);
+
+            } catch (err) {
+                console.error(err);
             } finally {
                 setLoading(false);
             }
@@ -66,64 +82,111 @@ export default function AdminDashboardHome() {
         fetchStats();
     }, []);
 
+    // charts
+    useChart(usersChartRef, () => ({
+        type: "doughnut",
+        data: {
+            labels: ["Profs", "Étudiants"],
+            datasets: [{
+                data: [stats.teachers, stats.students],
+                backgroundColor: ["#10b981", "#06b6d4"],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            cutout: "70%",
+            plugins: { legend: { display: false } },
+        }
+    }), [stats]);
+
+    useChart(absenceChartRef, () => ({
+        type: "doughnut",
+        data: {
+            labels: ["Présents", "Absents"],
+            datasets: [{
+                data: [
+                    100 - Number(stats.absencePercentage),
+                    Number(stats.absencePercentage)
+                ],
+                backgroundColor: ["#22c55e", "#f43f5e"],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            cutout: "70%",
+            plugins: { legend: { display: false } },
+        }
+    }), [stats]);
+
     if (loading) {
         return (
-            <div className="min-h-full flex items-center justify-center bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+            <div className="flex items-center justify-center h-screen bg-[#020617]">
+                <div className="animate-spin h-12 w-12 border-b-2 border-cyan-500 rounded-full"></div>
             </div>
         );
     }
 
     return (
-        <div className="p-6 md:p-10 min-h-full min-h-screen bg-linear-to-br from-[#0b0f1a] via-[#0f172a] to-[#020617] text-white">
-            <div className="max-w-5xl mx-auto space-y-8">
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">Tableau de bord</h1>
-                    <p className="text-gray-400">Vue d'ensemble de l'établissement</p>
+        <div className="p-6 md:p-10 min-h-screen bg-[#020617] text-white">
+            <div className="max-w-5xl mx-auto">
+
+                {/* HEADER */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold">Interface Admin</h1>
+                    <p className="text-gray-400">Statistiques en temps réel</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Carte Professeurs */}
-                    <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 shadow-xl flex items-center gap-6">
-                        <div className="p-4 bg-emerald-500/10 rounded-xl text-emerald-400 text-3xl">
-                            👨‍🏫
+                {/* CHARTS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    {/* USERS */}
+                    <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6">
+                        <p className="text-gray-400 text-sm mb-3">
+                            Répartition utilisateurs
+                        </p>
+
+                        <div className="flex justify-between text-xs mb-2">
+                            <span className="text-emerald-400">
+                                👨‍🏫 {stats.teachers} Profs
+                            </span>
+                            <span className="text-cyan-400">
+                                🎓 {stats.students} Étudiants
+                            </span>
                         </div>
-                        <div>
-                            <p className="text-gray-400 text-sm font-medium">Nombre de Profs</p>
-                            <p className="text-3xl font-bold text-white mt-1">{stats.teachers}</p>
+                        <div className="h-52 relative">
+                            <canvas ref={usersChartRef} className="w-full h-full"></canvas>
                         </div>
                     </div>
 
-                    {/* Carte Élèves */}
-                    <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 shadow-xl flex items-center gap-6">
-                        <div className="p-4 bg-cyan-500/10 rounded-xl text-cyan-400 text-3xl">
-                            🎓
+                    {/* ABSENCE */}
+                    <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6">
+                        <p className="text-gray-400 text-sm mb-3">
+                            Taux d'absences
+                        </p>
+
+                        <div className="flex justify-between text-xs mb-2">
+                            <span className="text-green-400">
+                                Présents {100 - Number(stats.absencePercentage)}%
+                            </span>
+                            <span className="text-rose-400">
+                                Absents {stats.absencePercentage}%
+                            </span>
                         </div>
-                        <div>
-                            <p className="text-gray-400 text-sm font-medium">Nombre d'Élèves</p>
-                            <p className="text-3xl font-bold text-white mt-1">{stats.students}</p>
+
+                        <div className="h-52">
+                            <canvas ref={absenceChartRef}></canvas>
                         </div>
                     </div>
 
-                    {/* Carte Absences */}
-                    <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 shadow-xl flex items-center gap-6">
-                        <div className="p-4 bg-rose-500/10 rounded-xl text-rose-400 text-3xl">
-                            📉
-                        </div>
-                        <div>
-                            <p className="text-gray-400 text-sm font-medium">Taux d'absences</p>
-                            <p className="text-3xl font-bold text-white mt-1">{stats.absencePercentage}%</p>
-                        </div>
-                    </div>
                 </div>
 
-                <div className="bg-[#111827] border border-gray-800 rounded-2xl p-8 shadow-xl mt-8">
-                    <h2 className="text-xl font-bold mb-4">Bienvenue sur l'espace d'administration</h2>
-                    <p className="text-gray-400 leading-relaxed">
-                        Utilisez la barre latérale pour naviguer entre la gestion des utilisateurs (étudiants, enseignants, administrateurs) et la gestion des séances. 
-                        Les statistiques ci-dessus sont mises à jour en temps réel selon les données enregistrées lors des présences.
+                {/* FOOTER TEXT */}
+                <div className="mt-8 bg-[#111827] border border-gray-800 rounded-2xl p-6">
+                    <p className="text-gray-400">
+                        Les statistiques sont calculées automatiquement à partir des présences enregistrées dans les séances.
                     </p>
                 </div>
+
             </div>
         </div>
     );

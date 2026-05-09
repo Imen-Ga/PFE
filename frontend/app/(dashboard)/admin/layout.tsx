@@ -23,9 +23,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
 
     const links = [
-        { href: "/admin", label: "Dashboard", icon: "📊" },
-        { href: "/admin/users", label: "Tableau Utilisateurs", icon: "👥" },
-        { href: "/admin/seance", label: "Tableau Séances", icon: "📅" },
+        { href: "/admin", label: "Statistiques" },
+        { href: "/admin/users", label: "Tableau Utilisateurs"},
+        { href: "/admin/seance", label: "Tableau Séances" },
     ];
 
     return (
@@ -34,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <aside className="w-64 bg-[#0b0f1a] border-r border-gray-800 flex flex-col justify-between shrink-0 z-20">
                 <div>
                     <div className="p-6 border-b border-gray-800">
-                        <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">Admin Panel</h2>
+                        <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">Admin</h2>
                         <p className="text-xs text-gray-400 mt-1">Espace d'administration</p>
                     </div>
                     <nav className="p-4 space-y-2">
