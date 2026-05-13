@@ -16,15 +16,15 @@ export default function StartPage() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      <h1 className="text-5xl font-bold mb-6 text-cyan-400">PrésenceFacile</h1>
-      <p className="text-gray-400 text-lg max-w-md text-center mb-10">
-        Système de présence automatisé par IA pour étudiants et enseignants.
+      <h1 className="text-6xl font-bold mb-7 text-cyan-400">PrésenceFacile</h1>
+      <p className="text-gray-400 text-2xl font-semibold max-w-xl text-center mb-12">
+          Système de gestion de présence basé sur la reconnaissance faciale
       </p>
 
       <div className="flex flex-col">
         <button
           onClick={() => router.push("/auth/login")}
-          className="px-6 py-3 my-4 bg-linear-to-r from-cyan-400 to-purple-500 rounded-xl hover:opacity-90 transition"
+          className="px-10 py-5 my-6 text-1xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 rounded-2xl hover:opacity-90 transition"
         >
            Se connecter
         </button>

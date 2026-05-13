@@ -89,7 +89,7 @@ async function login(e: any) {
           <span className="text-cyan-400">Intelligente</span>
         </h1>
         <p className="text-gray-400 mt-6 max-w-md">
-          Système de présence automatisé par IA pour étudiants et enseignants.
+          Système de présence automatisé pour étudiants et enseignants.
           Sécurisé, rapide et précis.
         </p>
       </div>
