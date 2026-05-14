@@ -96,19 +96,12 @@ export default function ForgetPass() {
             Envoyer
           </button>
 
-          {/* BACK */}
-          <Link
-            href="/auth/etudiant-enseignant/login"
-            className="block w-full text-center py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition mb-2"
-          >
-            Retour a la connexion 
-          </Link>
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/auth/login")}
             className="w-full mt-4 py-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 transition"
           >
-            Retour a l&apos;accueil
+            Retour accueil
           </button>
         </div>
       </div>
