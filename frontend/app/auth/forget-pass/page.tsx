@@ -8,16 +8,23 @@ export default function ForgetPass() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
 
-  function forgetPass() {
+  async function forgetPass() {
     setFeedback(null);
     if (!email) {
       setFeedback({ type: "error", text: "Veuillez entrer votre email" });
       return;
     }
-    setFeedback({ type: "success", text: "Code envoye a: " + email });
-    setTimeout(() => {
-      router.push("/auth/reset-password");
-    }, 900);
+    // Appel API pour envoyer le lien de réinitialisation
+    const res = await fetch("/api/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (res.ok) {
+      setFeedback({ type: "success", text: "Un lien de réinitialisation a été envoyé à votre email." });
+    } else {
+      setFeedback({ type: "error", text: "Erreur lors de l'envoi de l'email." });
+    }
   }
 
   return (
