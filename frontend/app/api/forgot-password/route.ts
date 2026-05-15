@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const token = Math.random().toString(36).substr(2) + Date.now().toString(36);
   // TODO: Sauvegarder le token et l'email en base de données avec expiration
   // Générer le lien de réinitialisation
-  const resetLink = `http://localhost:3000/auth/reset-password?token=${token}`;
+  const resetLink = `http://localhost:3000/auth/reset-password?oobCode=${token}`;
   try {
     await sendResetEmail(email, resetLink);
     return NextResponse.json({ success: true });

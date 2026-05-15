@@ -9,7 +9,8 @@ export default function ResetPassword() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  // Firebase envoie oobCode, pas token
+  const oobCode = searchParams.get("oobCode") || searchParams.get("token");
 
   async function handleReset() {
     setFeedback(null);
@@ -21,7 +22,7 @@ export default function ResetPassword() {
       setFeedback({ type: "error", text: "Les mots de passe ne correspondent pas." });
       return;
     }
-    if (!token) {
+    if (!oobCode) {
       setFeedback({ type: "error", text: "Lien invalide ou expiré." });
       return;
     }
@@ -29,13 +30,14 @@ export default function ResetPassword() {
     const res = await fetch("/api/reset-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, password }),
+      body: JSON.stringify({ token: oobCode, password }),
     });
+    const data = await res.json();
     if (res.ok) {
       setFeedback({ type: "success", text: "Mot de passe modifié avec succès." });
       setTimeout(() => router.push("/auth/login"), 1500);
     } else {
-      setFeedback({ type: "error", text: "Erreur lors de la modification." });
+      setFeedback({ type: "error", text: data.error || "Erreur lors de la modification." });
     }
   }
 

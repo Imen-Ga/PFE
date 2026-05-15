@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../../../filebase";
 export default function ForgetPass() {
   const [email, setEmail] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -14,16 +16,13 @@ export default function ForgetPass() {
       setFeedback({ type: "error", text: "Veuillez entrer votre email" });
       return;
     }
-    // Appel API pour envoyer le lien de réinitialisation
-    const res = await fetch("/api/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    if (res.ok) {
+    try {
+      await sendPasswordResetEmail(auth, email, {
+        url: "http://localhost:3000/auth/reset-password"
+      });
       setFeedback({ type: "success", text: "Un lien de réinitialisation a été envoyé à votre email." });
-    } else {
-      setFeedback({ type: "error", text: "Erreur lors de l'envoi de l'email." });
+    } catch (e: any) {
+      setFeedback({ type: "error", text: e.message || "Erreur lors de l'envoi de l'email." });
     }
   }
 

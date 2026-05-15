@@ -16,8 +16,13 @@ export default function VerifyLogin({
   useEffect(() => {
     const verifyAccess = async () => {
       try {
-        // Auto-redirect only on authentication pages, except login/forget-pass.
-        if (!pathname.startsWith("/auth") || pathname === "/auth/login" || pathname === "/auth/forget-pass") {
+        // Auto-redirect only on authentication pages, except login/forget-pass/reset-password.
+        if (
+          !pathname.startsWith("/auth") ||
+          pathname === "/auth/login" ||
+          pathname === "/auth/forget-pass" ||
+          pathname === "/auth/reset-password"
+        ) {
           return;
         }
 
