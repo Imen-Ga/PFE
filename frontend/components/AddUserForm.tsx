@@ -59,6 +59,33 @@ export default function AddUserComponent() {
             return;
         }
 
+        // Vérification de l'âge pour les étudiants
+        if (role === "Etudiant") {
+            // On suppose que birthdate est au format "dd-mm-yyyy" ou "yyyy-mm-dd"
+            let birthYear, birthMonth, birthDay;
+            if (/^\d{2}-\d{2}-\d{4}$/.test(birthdate)) {
+                // Format dd-mm-yyyy
+                [birthDay, birthMonth, birthYear] = birthdate.split("-").map(Number);
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(birthdate)) {
+                // Format yyyy-mm-dd
+                [birthYear, birthMonth, birthDay] = birthdate.split("-").map(Number);
+            } else {
+                setFeedback({ type: "error", text: "Format de date de naissance invalide. Utilisez jj-mm-aaaa ou aaaa-mm-jj." });
+                return;
+            }
+            const today = new Date();
+            const birthDateObj = new Date(birthYear, birthMonth - 1, birthDay);
+            let age = today.getFullYear() - birthDateObj.getFullYear();
+            const m = today.getMonth() - birthDateObj.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+                age--;
+            }
+            if (age < 18) {
+                setFeedback({ type: "error", text: "L'étudiant doit avoir au moins 18 ans." });
+                return;
+            }
+        }
+
         const result = await addUser({ email, password, userrole: role, username, birthdate, phoneNbr });
 
         if (result.success) {

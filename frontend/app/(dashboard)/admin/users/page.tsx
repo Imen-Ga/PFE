@@ -456,7 +456,7 @@ export default function UsersTablePage() {
                         <input
                             type="email"
                             name="email"
-                            placeholder="exemple@email.com"
+                            placeholder="exemple@gmail.com"
                             className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
                             required
                         />
@@ -514,6 +514,7 @@ export default function UsersTablePage() {
                         >
                             <option value="Etudiant">Étudiant</option>
                             <option value="Enseignant">Enseignant</option>
+                            <option value="Enseignant">Admin</option>
                         </select>
                     </div>
 
@@ -525,7 +526,7 @@ export default function UsersTablePage() {
                         <input
                             type="text"
                             name="username"
-                            placeholder="Jean Dupont"
+                            placeholder="prénom nom"
                             className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
                             required
                         />
@@ -538,7 +539,7 @@ export default function UsersTablePage() {
                         </label>
                         <input
                             type="datetime-local"
-                            name="birthdate"
+                            name="anniversaire"
                             className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
                             required
                         />
@@ -552,7 +553,7 @@ export default function UsersTablePage() {
                         <input
                             type="tel"
                             name="phoneNbr"
-                            placeholder="+33 6 12 34 56 78"
+                            placeholder="+216 98 765 432"
                             className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
                             required
                         />
