@@ -212,24 +212,22 @@ export default function UsersTablePage() {
         const form = e.currentTarget;
         const formData = new FormData(form);
 
+        // Vérification de l'âge pour les étudiants
         if (role === "Etudiant") {
             const birthdateStr = formData.get("birthdate") as string;
             if (birthdateStr) {
                 const birthDateObj = new Date(birthdateStr);
                 const today = new Date();
-                
                 if (birthDateObj > today) {
                     setMessage({ type: "error", text: "La date de naissance ne peut pas être dans le futur." });
                     setIsAdding(false);
                     return;
                 }
-                
                 let age = today.getFullYear() - birthDateObj.getFullYear();
                 const m = today.getMonth() - birthDateObj.getMonth();
                 if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
                     age--;
                 }
-                
                 if (age < 17) {
                     setMessage({ type: "error", text: "L'étudiant doit avoir au moins 17 ans." });
                     setIsAdding(false);
@@ -239,18 +237,20 @@ export default function UsersTablePage() {
         }
 
         try {
-            const uploadRes = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!uploadRes.ok) {
-                const text = await uploadRes.text();
-                throw new Error(`Upload failed: ${text}`);
+            let imageUrl = undefined;
+            if (role === "Etudiant") {
+                // Upload image seulement pour les étudiants
+                const uploadRes = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (!uploadRes.ok) {
+                    const text = await uploadRes.text();
+                    throw new Error(`Upload failed: ${text}`);
+                }
+                const uploadData = await uploadRes.json();
+                imageUrl = uploadData.filePath;
             }
-
-            const uploadData = await uploadRes.json();
-            const imageUrl = uploadData.filePath;
 
             const email = formData.get("email") as string;
             const password = formData.get("password") as string;
@@ -261,15 +261,19 @@ export default function UsersTablePage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            await setDoc(doc(db, "users", user.uid), {
+            const userData: any = {
                 username,
                 email,
                 birthDate: birthdate,
                 role,
                 phoneNbr,
-                image: imageUrl,
                 status: "absent",
-            });
+            };
+            if (role === "Etudiant") {
+                userData.image = imageUrl;
+            }
+
+            await setDoc(doc(db, "users", user.uid), userData);
 
             // Recharger immédiatement la liste des utilisateurs
             await loadUsers();
@@ -554,20 +558,22 @@ export default function UsersTablePage() {
                         />
                     </div>
 
-                    {/* Image */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Photo de profil <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                            type="file"
-                            name="image"
-                            accept="image/*"
-                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
-                            required
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Formats acceptés : JPG, PNG, GIF (max 5MB)</p>
-                    </div>
+                    {/* Image : seulement pour les étudiants */}
+                    {role === "Etudiant" && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Photo de profil <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                                type="file"
+                                name="image"
+                                accept="image/*"
+                                className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
+                                required
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Formats acceptés : JPG, PNG, GIF (max 5MB)</p>
+                        </div>
+                    )}
 
                     <button
                         type="submit"

@@ -123,6 +123,7 @@ export default function AddUserComponent() {
                             </option>
                             <option value="Etudiant">Etudiant</option>
                             <option value="Enseignant">Enseignant</option>
+                            <option value="Admin">Admin</option>
                         </select>
                         <input
                             type="text"
