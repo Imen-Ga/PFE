@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "@/filebase";
 import { addCurrentUserInfo } from "@/redux/slice/authSlice";
 
@@ -55,39 +55,44 @@ export default function StudentDashboard() {
   }, [currentUser, dispatch]);
 
   useEffect(() => {
-    if (!currentUser?.uid) {
+    // Récupérer l'UID depuis Redux ou localStorage
+    let uid = currentUser?.uid;
+    if (!uid && typeof window !== "undefined") {
+      uid = localStorage.getItem("uid");
+    }
+    if (!uid) {
       setLoading(false);
       setSeances([]);
       return;
     }
 
-    const fetchSeances = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    let unsubscribeUsers: (() => void) | null = null;
+    let unsubscribeSeances: (() => void) | null = null;
+    setLoading(true);
+    setError(null);
 
-        // 1. Get users for names
-        const usersSnap = await getDocs(collection(db, "users"));
-        const usersData = usersSnap.docs.reduce((acc, doc) => {
-          acc[doc.id] = doc.data().username || doc.data().email || "-";
-          return acc;
-        }, {} as Record<string, string>);
+    // 1. Listen to users for names
+    unsubscribeUsers = onSnapshot(collection(db, "users"), (usersSnap) => {
+      const usersData = usersSnap.docs.reduce((acc, doc) => {
+        acc[doc.id] = doc.data().username || doc.data().email || "-";
+        return acc;
+      }, {} as Record<string, string>);
 
-        // 2. Get seances
-        const seancesSnap = await getDocs(collection(db, "seance"));
+      // 2. Listen to seances
+      if (unsubscribeSeances) unsubscribeSeances();
+      unsubscribeSeances = onSnapshot(collection(db, "seance"), (seancesSnap) => {
         const fetchedSeances: Seance[] = [];
-
         seancesSnap.docs.forEach(doc => {
           const data = doc.data() as any;
           const participants = Array.isArray(data.participants) ? data.participants : [];
 
           let isParticipant = false;
           for (const p of participants) {
-            if (typeof p === 'string' && p === currentUser.uid) {
+            if (typeof p === 'string' && p === uid) {
               isParticipant = true;
               break;
             } else if (typeof p === 'object' && p !== null) {
-              if (p.id === currentUser.uid || p.email === currentUser.uid) {
+              if (p.id === uid || p.email === uid) {
                 isParticipant = true;
                 break;
               }
@@ -113,7 +118,7 @@ export default function StudentDashboard() {
 
             if (Array.isArray(data.presences)) {
               const presence = data.presences.find(
-                (p: any) => p.studentId === currentUser.uid
+                (p: any) => p.studentId === uid
               );
 
               if (presence) {
@@ -139,18 +144,23 @@ export default function StudentDashboard() {
         });
 
         setSeances(fetchedSeances);
-
-      } catch (e: any) {
-        console.error("Erreur fetch:", e);
+        setLoading(false);
+      }, (e) => {
         setError(e.message || "Erreur de connexion");
         setSeances([]);
-      } finally {
         setLoading(false);
-      }
-    };
+      });
+    }, (e) => {
+      setError(e.message || "Erreur de connexion");
+      setSeances([]);
+      setLoading(false);
+    });
 
-    fetchSeances();
-  }, [currentUser, refreshKey]);
+    return () => {
+      if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribeSeances) unsubscribeSeances();
+    };
+  }, [currentUser]);
 
   // Statistiques dynamiques
   const total = seances.length;
@@ -207,6 +217,16 @@ export default function StudentDashboard() {
           )}
         </div>
 
+        {/* Résumé rapide */}
+        <div className="mt-6 pt-4 border-t border-white/10">
+          <div className="flex justify-between items-center text-sm text-gray-300">
+            <span>Total séances: <strong className="text-white">{seances.length}</strong></span>
+            <span>Présences: <strong className="text-emerald-400">{presents}</strong></span>
+            <span>Absences: <strong className="text-red-400">{absents}</strong></span>
+            <span>Taux de présence: <strong className="text-cyan-400">{taux}</strong></span>
+          </div>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, index) => (
@@ -221,12 +241,6 @@ export default function StudentDashboard() {
         <div className="bg-white/10 backdrop-blur-xl rounded-xl p-6 shadow-2xl border border-white/20">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
             <h2 className="text-xl font-semibold">📋 Historique de présence</h2>
-            <button
-              onClick={() => setRefreshKey(prev => prev + 1)}
-              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm"
-            >
-              🔄 Actualiser
-            </button>
           </div>
 
           {loading ? (
@@ -238,12 +252,6 @@ export default function StudentDashboard() {
             <div className="text-center py-8">
               <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 inline-block">
                 <p className="text-red-300">❌ {error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-3 px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 transition text-sm"
-                >
-                  Réessayer
-                </button>
               </div>
             </div>
           ) : seances.length === 0 ? (
@@ -289,15 +297,7 @@ export default function StudentDashboard() {
                 </table>
               </div>
 
-              {/* Résumé */}
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <div className="flex justify-between items-center text-sm text-gray-300">
-                  <span>Total séances: <strong className="text-white">{seances.length}</strong></span>
-                  <span>Présences: <strong className="text-emerald-400">{presents}</strong></span>
-                  <span>Absences: <strong className="text-red-400">{absents}</strong></span>
-                  <span>Taux de présence: <strong className="text-cyan-400">{taux}</strong></span>
-                </div>
-              </div>
+              {/* Résumé supprimé ici, déplacé en haut */}
             </>
           )}
 

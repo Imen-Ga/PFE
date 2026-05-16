@@ -1,7 +1,7 @@
 "use client";
 
 import { db } from "@/filebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -79,7 +79,7 @@ export default function TeacherDashboard() {
               participants: Array.isArray(d.participants)
                 ? d.participants
                 : [],
-              precences: Array.isArray(d.presences)
+              presences: Array.isArray(d.presences)
                 ? d.presences
                 : [],
             };
@@ -216,16 +216,30 @@ export default function TeacherDashboard() {
                         </tr>
                       ) : (
                         s.participants.map((p: any, i) => {
-
-                          const studentId =
-                            typeof p === "object" ? p.id : p;
-
-                          const presence =
-                            s.presences?.find(
-                              (pr: any) => pr.studentId === studentId
-                            );
-
+                          const studentId = typeof p === "object" ? p.id : p;
+                          const presence = s.presences?.find((pr: any) => pr.studentId === studentId);
                           const status = presence?.status || "Absent";
+
+                          // Fonction pour changer le statut dans Firestore
+                          const handleChangeStatus = async () => {
+                            try {
+                              const seanceRef = doc(db, "seance", s.id);
+                              let newPresences = Array.isArray(s.presences) ? [...s.presences] : [];
+                              const idx = newPresences.findIndex((pr: any) => pr.studentId === studentId);
+                              if (idx !== -1) {
+                                // Toggle
+                                newPresences[idx] = {
+                                  ...newPresences[idx],
+                                  status: status === "Présent" ? "Absent" : "Présent"
+                                };
+                              } else {
+                                newPresences.push({ studentId, status: "Présent" });
+                              }
+                              await updateDoc(seanceRef, { presences: newPresences });
+                            } catch (err) {
+                              alert("Erreur lors de la modification du statut");
+                            }
+                          };
 
                           return (
                             <tr key={i} className="border-t border-slate-700/50 hover:bg-slate-700/30 transition-colors duration-150">
@@ -233,22 +247,24 @@ export default function TeacherDashboard() {
                                 {getUserName(p)}
                               </td>
                               <td className="py-3 px-4 text-center">
-                                {status === "Présent" ? (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-600/20 rounded-lg text-green-300 text-xs font-semibold border border-green-500/30">
-                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                                    Présent
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-lg text-red-300 text-xs font-semibold border border-red-500/30">
-                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                    Absent
-                                  </span>
-                                )}
+                                <button
+                                  onClick={handleChangeStatus}
+                                  className={
+                                    status === "Présent"
+                                      ? "inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-600/20 rounded-lg text-green-300 text-xs font-semibold border border-green-500/30 hover:bg-green-500/30"
+                                      : "inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-red-600/20 rounded-lg text-red-300 text-xs font-semibold border border-red-500/30 hover:bg-red-500/30"
+                                  }
+                                  title="Changer le statut"
+                                >
+                                  <span className={status === "Présent" ? "w-1.5 h-1.5 bg-green-500 rounded-full" : "w-1.5 h-1.5 bg-red-500 rounded-full"}></span>
+                                  {status}
+                                  <span className="ml-2 text-xs underline text-cyan-400">Modifier</span>
+                                </button>
                               </td>
                             </tr>
-                          )
-                        }
-                        ))}
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -263,7 +279,7 @@ export default function TeacherDashboard() {
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10 hover:border-cyan-300 transition-all duration-200 font-medium group"
           >
             <span>←</span>
-            ← Déconnexion
+             Déconnexion
           </Link>
         </div>
 

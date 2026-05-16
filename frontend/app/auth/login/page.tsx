@@ -43,17 +43,19 @@ async function login(e: any) {
                 localStorage.setItem("uid", uid);
                 localStorage.setItem("accessToken", userCredential.accessToken );
                 if(userDoc.data().role === "Admin"){
-                    router.push("/admin");
+                  router.push("/admin");
                 }else if(userDoc.data().role === "Enseignant"){
-                    router.push("/teacher");
+                  router.push("/teacher");
                 }else if(userDoc.data().role === "Etudiant"){
-                    router.push("/student");
+                  // Déclencher le calcul du récapitulatif immédiatement après le signin
+                  // Redirection immédiate, le dashboard étudiant affichera le résumé dès l'arrivée
+                  router.push("/student");
                 }
                 else{
-                    setFeedback({
-                      type: "error",
-                      text: "Acces refuse: seuls les comptes administrateur peuvent se connecter ici. Role detecte: " + userDoc.data().role,
-                    });
+                  setFeedback({
+                    type: "error",
+                    text: "Acces refuse: seuls les comptes administrateur peuvent se connecter ici. Role detecte: " + userDoc.data().role,
+                  });
                 }
             } 
         }            
