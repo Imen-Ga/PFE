@@ -6,7 +6,13 @@ import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { MultiSelect } from "@/components/MultiSelect";
 
+const ROLE_OPTIONS = [
+    { id: "Etudiant", username: "Étudiant", role: "Etudiant" },
+    { id: "Enseignant", username: "Enseignant", role: "Enseignant" },
+    { id: "Admin", username: "Admin", role: "Admin" }
+];
 
 type UserRow = {
     id: string;
@@ -212,27 +218,26 @@ export default function UsersTablePage() {
         const form = e.currentTarget;
         const formData = new FormData(form);
 
-        // Vérification de l'âge pour les étudiants
-        if (role === "Etudiant") {
-            const birthdateStr = formData.get("birthdate") as string;
-            if (birthdateStr) {
-                const birthDateObj = new Date(birthdateStr);
-                const today = new Date();
-                if (birthDateObj > today) {
-                    setMessage({ type: "error", text: "La date de naissance ne peut pas être dans le futur." });
-                    setIsAdding(false);
-                    return;
-                }
-                let age = today.getFullYear() - birthDateObj.getFullYear();
-                const m = today.getMonth() - birthDateObj.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-                    age--;
-                }
-                if (age < 17) {
-                    setMessage({ type: "error", text: "L'étudiant doit avoir au moins 17 ans." });
-                    setIsAdding(false);
-                    return;
-                }
+        // Vérification de l'âge pour tous les utilisateurs
+        const birthdateStr = formData.get("birthdate") as string;
+        if (birthdateStr) {
+            const birthDateObj = new Date(birthdateStr);
+            const today = new Date();
+            if (birthDateObj > today) {
+                setMessage({ type: "error", text: "La date de naissance ne peut pas être dans le futur." });
+                setIsAdding(false);
+                return;
+            }
+            let age = today.getFullYear() - birthDateObj.getFullYear();
+            const m = today.getMonth() - birthDateObj.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+                age--;
+            }
+            const minAge = role === "Etudiant" ? 17 : 25;
+            if (age < minAge) {
+                setMessage({ type: "error", text: `Un ${role} doit avoir au moins ${minAge} ans.` });
+                setIsAdding(false);
+                return;
             }
         }
 
@@ -355,15 +360,14 @@ export default function UsersTablePage() {
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
-                                            <select
-                                                value={user.role}
-                                                onChange={(e) => handleFieldChange(user.id, "role", e.target.value)}
-                                                className="w-32 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
-                                            >
-                                                <option value="Etudiant">Etudiant</option>
-                                                <option value="Enseignant">Enseignant</option>
-                                                <option value="Admin">Admin</option>
-                                            </select>
+                                            <div className="w-36 -mb-4">
+                                                <MultiSelect
+                                                    options={ROLE_OPTIONS}
+                                                    selected={user.role ? [{ id: user.role, username: user.role === "Etudiant" ? "Étudiant" : user.role }] : []}
+                                                    onChange={(val) => handleFieldChange(user.id, "role", val.length > 0 ? val[val.length - 1].id : "Etudiant")}
+                                                    placeholder="Rôle"
+                                                />
+                                            </div>
                                         </td>
                                         <td className="py-3 pr-4">
                                             <input
@@ -505,17 +509,12 @@ export default function UsersTablePage() {
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Rôle <span className="text-red-400">*</span>
                         </label>
-                        <select
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                            name="role"
-                            className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
-                            required
-                        >
-                            <option value="Etudiant">Étudiant</option>
-                            <option value="Enseignant">Enseignant</option>
-                            <option value="Enseignant">Admin</option>
-                        </select>
+                        <MultiSelect
+                            options={ROLE_OPTIONS}
+                            selected={role ? [{ id: role, username: role === "Etudiant" ? "Étudiant" : role }] : []}
+                            onChange={(val) => setRole(val.length > 0 ? val[val.length - 1].id : "Etudiant")}
+                            placeholder="Sélectionner un rôle"
+                        />
                     </div>
 
                     {/* Nom complet */}
@@ -538,8 +537,8 @@ export default function UsersTablePage() {
                             Date de naissance <span className="text-red-400">*</span>
                         </label>
                         <input
-                            type="datetime-local"
-                            name="anniversaire"
+                            type="date"
+                            name="birthdate"
                             className="w-full p-3 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-white"
                             required
                         />

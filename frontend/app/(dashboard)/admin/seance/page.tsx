@@ -384,83 +384,35 @@ export default function SeanceTable() {
                                             />
                                         </td>
                                         <td className="py-3 pr-4">
-                                            <select
-                                                value={getResponsableId(seance.responsable)}
-                                                onChange={(e) => handleFieldChange(seance.id, "responsable", e.target.value)}
-                                                className="w-48 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400"
-                                            >
-                                                <option value="" disabled>Sélectionner</option>
-                                                {teacherUsers.map(teacher => (
-                                                    <option key={teacher.id} value={teacher.id}>
-                                                        {teacher.username}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <div className="w-56 -mb-4">
+                                                <MultiSelect
+                                                    options={teacherUsers}
+                                                    selected={(() => {
+                                                        const rId = getResponsableId(seance.responsable);
+                                                        const user = teacherUsers.find(u => u.id === rId);
+                                                        return user ? [user] : [];
+                                                    })()}
+                                                    onChange={(val) => handleFieldChange(seance.id, "responsable", val.length > 0 ? val[val.length - 1].id : "")}
+                                                    placeholder="Sélectionner"
+                                                />
+                                            </div>
                                         </td>
                                         <td className="py-3 pr-4">
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    className="w-56 p-2 bg-[#0b0f1a] border border-gray-700 rounded-lg outline-none focus:border-cyan-400 text-left"
-                                                    onClick={() => setOpenDropdownId(openDropdownId === seance.id ? null : seance.id)}
-                                                >
-                                                    {seance.participants.length === 0
-                                                        ? "Aucun participant"
-                                                        : seance.participants
-                                                            .map(pid => {
-                                                                const user = users.find(u => u.id === pid);
-                                                                return user ? user.username : pid;
-                                                            })
-                                                            .join(", ")}
-                                                </button>
-                                                {openDropdownId === seance.id && (
-                                                    <div className="absolute z-10 mt-2 w-56 max-h-60 overflow-y-auto bg-[#1e293b] border border-gray-700 rounded-lg shadow-lg p-2">
-                                                        {seance.participants.length === 0 ? (
-                                                            <div className="text-gray-400 p-2">Aucun participant</div>
-                                                        ) : (
-                                                            seance.participants.map((participant, idx) => {
-                                                                let key = typeof participant === 'string' ? participant : (participant?.id || participant?.email || JSON.stringify(participant) + idx);
-                                                                let display = (() => {
-                                                                    if (typeof participant === 'string') {
-                                                                        const user = users.find(u => u.id === participant);
-                                                                        return user ? user.username : participant;
-                                                                    } else if (participant?.username) {
-                                                                        return participant.username;
-                                                                    } else if (participant?.email) {
-                                                                        return participant.email;
-                                                                    } else {
-                                                                        return JSON.stringify(participant);
-                                                                    }
-                                                                })();
-                                                                return (
-                                                                    <div key={key} className="flex items-center gap-2 py-1 px-2 hover:bg-cyan-900/30 rounded">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={!!(selectedToRemove[seance.id] || []).includes(key)}
-                                                                            onChange={() => handleToggleRemove(seance.id, key)}
-                                                                        />
-                                                                        <span>{display}</span>
-                                                                    </div>
-                                                                );
-                                                            })
-                                                        )}
-                                                        <button
-                                                            type="button"
-                                                            className="mt-2 w-full py-1 rounded bg-red-700 hover:bg-red-600 text-white disabled:opacity-50"
-                                                            disabled={!(selectedToRemove[seance.id] && selectedToRemove[seance.id].length > 0)}
-                                                            onClick={() => handleRemoveSelected(seance.id)}
-                                                        >
-                                                            Supprimer
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="mt-2 w-full py-1 rounded bg-cyan-700 hover:bg-cyan-600 text-white"
-                                                            onClick={() => setOpenDropdownId(null)}
-                                                        >
-                                                            Fermer
-                                                        </button>
-                                                    </div>
-                                                )}
+                                            <div className="w-56 -mb-4 z-10 relative">
+                                                <MultiSelect
+                                                    options={studentUsers}
+                                                    selected={seance.participants.map(pid => {
+                                                        const p = typeof pid === 'string' ? pid : (pid as any)?.id;
+                                                        const user = studentUsers.find(u => u.id === p);
+                                                        return user ? user : { id: p, username: typeof pid === 'string' ? pid : (pid as any)?.username || p };
+                                                    })}
+                                                    onChange={(val) => {
+                                                        setSeances((prev) =>
+                                                            prev.map((s) => (s.id === seance.id ? { ...s, participants: val.map(v => v.id) } : s))
+                                                        );
+                                                    }}
+                                                    placeholder="Aucun participant"
+                                                />
                                             </div>
                                         </td>
                                         <td className="py-3 pr-4">
