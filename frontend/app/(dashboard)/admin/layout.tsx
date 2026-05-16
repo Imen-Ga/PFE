@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const links = [
         { href: "/admin", label: "Statistiques" },
-        { href: "/admin/users", label: "Tableau Utilisateurs"},
+        { href: "/admin/users", label: "Tableau Utilisateurs" },
         { href: "/admin/seance", label: "Tableau Séances" },
     ];
 
@@ -44,11 +44,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Link
                                     key={link.href}
                                     href={link.href}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${
-                                        isActive 
-                                            ? "bg-[#1e293b] text-cyan-400 font-medium border border-gray-700" 
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${isActive
+                                            ? "bg-[#1e293b] text-cyan-400 font-medium border border-gray-700"
                                             : "text-gray-400 hover:text-white hover:bg-[#1e293b]/50 border border-transparent"
-                                    }`}
+                                        }`}
                                 >
                                     <span className="text-xl">{link.icon}</span>
                                     <span>{link.label}</span>
@@ -57,13 +56,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         })}
                     </nav>
                 </div>
-                
+
                 <div className="p-4 border-t border-gray-800">
                     <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition"
                     >
-                        <span className="text-xl">🚪</span>
+                        <span className="text-xl">←</span>
                         <span>Déconnexion</span>
                     </button>
                 </div>
