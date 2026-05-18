@@ -19,13 +19,14 @@ export async function POST(req: Request) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const filePath = path.join("C:/pfe/images", email + ".jpg");
+        const ext = file.type.split("/")[1]; // jpg / png
+        const filePath = path.join("C:/pfe/images", `${email}.${ext}`);
 
         await writeFile(filePath, buffer);
 
         return Response.json({
             success: true,
-            filePath: `/images/${email}`,
+            filePath: `/images/${email}.${ext}`
         });
 
     } catch (error) {
