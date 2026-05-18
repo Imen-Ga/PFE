@@ -28,7 +28,7 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserRow[]>([]);
 
-  // 🔒 SAFE DISPLAY
+  //  SAFE DISPLAY
   const safe = (value: any) => {
     if (!value) return "-";
     if (typeof value === "string" || typeof value === "number") return value;
@@ -60,7 +60,7 @@ export default function TeacherDashboard() {
 
             if (data.seanceId === selectedSeance) {
 
-              alert("🚨 FRAUDE détectée !");
+              alert(" FRAUDE détectée !");
             }
           }
         });
@@ -155,17 +155,17 @@ export default function TeacherDashboard() {
 
         {seances.length === 0 && (
           <div className="bg-slate-800/50 rounded-xl p-8 text-center border border-slate-700">
-            <div className="text-6xl mb-4">📚</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-gray-400 text-lg">Aucune séance trouvée</p>
             <p className="text-gray-500 text-sm mt-2">Vous n'êtes responsable d'aucune séance pour le moment</p>
           </div>
         )}
 
-        {/* ✅ LISTE DÉROULANTE - Enhanced */}
+        {/*  LISTE DÉROULANTE - Enhanced */}
         {seances.length > 0 && (
           <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 backdrop-blur-sm">
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              📖 Sélectionner une séance
+              Sélectionner une séance
             </label>
             <select
               value={selectedSeance}
@@ -181,7 +181,7 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* ✅ AFFICHER SEULEMENT LA SÉANCE CHOISIE - Enhanced */}
+        {/*  AFFICHER SEULEMENT LA SÉANCE CHOISIE - Enhanced */}
         {seances
           .filter((s) => s.id === selectedSeance)
           .map((s) => (
@@ -217,7 +217,7 @@ export default function TeacherDashboard() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-200">
-                    📋 Liste des participants
+                    Liste des participants
                   </h3>
                   <span className="text-sm text-gray-400 bg-slate-700 px-3 py-1 rounded-full">
                     {s.participants.length} étudiant{s.participants.length !== 1 ? 's' : ''}
@@ -228,8 +228,8 @@ export default function TeacherDashboard() {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-900">
                       <tr className="text-gray-300 border-b border-slate-700">
-                        <th className="text-left p-4 font-semibold">👤 Étudiant</th>
-                        <th className="text-center p-4 font-semibold w-32">📊 Statut</th>
+                        <th className="text-left p-4 font-semibold"> Étudiant</th>
+                        <th className="text-center p-4 font-semibold w-32"> Statut</th>
                       </tr>
                     </thead>
 
